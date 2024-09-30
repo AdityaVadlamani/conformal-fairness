@@ -1,0 +1,50 @@
+base_gnn:
+  booster: gbtree
+  colsample_bylevel: 0.983963756674573
+  colsample_bynode: 0.8493689231625428
+  colsample_bytree: 0.9025091111851143
+  gamma: 0.7781567509498505
+  grow_policy: depthwise
+  lr: 0.03146730406166006
+  max_depth: 18
+  max_leaves: 0
+  n_estimators: 117
+  subsample: 0.7307396811264659
+batch_size: 2048
+dataset:
+  binary_sens: false
+  discard_attrs: []
+  force_reprep: false
+  name: ACSIncome
+  pred_attrs: []
+  sens_attrs: []
+  small_class: false
+dataset_dir: /users/PAS2030/$USER/conformal-fairness/datasets
+dataset_loading_style: split
+dataset_n_samples_per_class: null
+dataset_split_fractions:
+  calib: 0.35
+  train: 0.3
+  valid: 0.2
+epochs: 25
+job_id: hpt_ACSIncome_xgb
+logging_config:
+  use_tensorboard: false
+  use_terminal: false
+  use_wandb: false
+  wandb_config:
+    group: base
+    job_type: debug
+    log_model: false
+    offline: false
+
+    run_name: null
+num_workers: 1
+output_dir: ./outputs
+resource_config:
+  cpus: 20
+  custom: {}
+  gpus: 1
+  nodes: 1
+resume_from_checkpoint: false
+seed: 0

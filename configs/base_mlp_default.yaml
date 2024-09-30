@@ -1,0 +1,33 @@
+seed: 0
+
+base_gnn:
+  d_hidden: 256
+  dropout: 0.4
+  layers: 6
+  lr: 0.001
+
+logging_config:
+  use_wandb: False
+  wandb_config:
+
+    log_model: False
+    group: "base"
+    job_type: "debug"
+
+epochs: 25
+batch_size: 2048
+num_workers: 1
+dataset: "ACSEducation"
+resource_config:
+  cpus: 20
+  nodes: 1
+  gpus: 1
+dataset_loading_style: "split"
+dataset_split_fractions:
+  train: 0.3
+  valid: 0.1
+  calib: 0.1
+output_dir: "./outputs"
+dataset_dir: "./datasets"
+job_id: "basegnn_ACSEducation_strat"
+resume_from_checkpoint: False

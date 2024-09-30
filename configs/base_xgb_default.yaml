@@ -1,0 +1,38 @@
+seed: 2
+
+base_gnn:
+  n_estimators: 250
+  max_depth: 10
+  max_leaves: 0
+  lr: 0.1
+
+logging_config:
+  use_wandb: False
+  wandb_config:
+
+    log_model: False
+    group: "base"
+    job_type: "debug"
+
+epochs: 25
+batch_size: 2048
+num_workers: 1
+dataset:
+  name: "Credit"
+  pred_attrs: ["EducationLevel"]
+  discard_attrs: ["NoDefaultNextMonth", "Single"]
+  force_reprep: False
+
+resource_config:
+  cpus: 20
+  nodes: 1
+  gpus: 1
+dataset_loading_style: "split"
+dataset_split_fractions:
+  train: 0.3
+  valid: 0.1
+  calib: 0.1
+output_dir: "./outputs"
+dataset_dir: "/users/$USER/conformal-fairness/datasets"
+job_id: "hpt_basexgb_Credit"
+resume_from_checkpoint: False

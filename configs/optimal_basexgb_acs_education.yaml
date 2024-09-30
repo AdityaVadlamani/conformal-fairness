@@ -1,0 +1,50 @@
+base_gnn:
+  booster: gbtree
+  colsample_bylevel: 0.9186658279192578
+  colsample_bynode: 0.7600416770975592
+  colsample_bytree: 0.7291908071734847
+  gamma: 0.896038387509077
+  grow_policy: depthwise
+  lr: 0.0015427474110183141
+  max_depth: 21
+  max_leaves: 0
+  n_estimators: 330
+  subsample: 0.724598869109186
+batch_size: 2048
+dataset:
+  binary_sens: false
+  discard_attrs: []
+  force_reprep: false
+  name: ACSEducation
+  pred_attrs: []
+  sens_attrs: []
+  small_class: false
+dataset_dir: /users/PAS2030/$USER/conformal-fairness/datasets
+dataset_loading_style: split
+dataset_n_samples_per_class: null
+dataset_split_fractions:
+  calib: 0.35
+  train: 0.3
+  valid: 0.2
+epochs: 25
+job_id: hpt_ACSEducation_xgb
+logging_config:
+  use_tensorboard: false
+  use_terminal: false
+  use_wandb: false
+  wandb_config:
+    group: base
+    job_type: debug
+    log_model: false
+    offline: false
+
+    run_name: null
+num_workers: 1
+output_dir: ./outputs
+resource_config:
+  cpus: 20
+  custom: {}
+  gpus: 1
+  nodes: 1
+resume_from_checkpoint: false
+seed: 0

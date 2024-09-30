@@ -1,0 +1,39 @@
+seed: 0
+
+base_gnn:
+  model: "GCN"
+  hidden_channels: 32
+  heads: 2
+  layers: 2
+  aggr: "mean"
+  lr: 0.001
+
+logging_config:
+  use_wandb: False
+  wandb_config:
+
+    log_model: False
+    group: "base"
+    job_type: "debug"
+
+epochs: 100
+batch_size: 256
+num_workers: 1
+dataset:
+  name: "Credit"
+  pred_attrs: ["EducationLevel"]
+  discard_attrs: ["NoDefaultNextMonth", "Single"]
+  force_reprep: True
+resource_config:
+  cpus: 20
+  nodes: 1
+  gpus: 1
+dataset_loading_style: "split"
+dataset_split_fractions:
+  train: 0.3
+  valid: 0.1
+  calib: 0.1
+output_dir: "./outputs"
+dataset_dir: "./datasets"
+job_id: "basegnn_Credit_strat"
+resume_from_checkpoint: False

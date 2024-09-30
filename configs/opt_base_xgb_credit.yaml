@@ -1,0 +1,54 @@
+seed: 0
+
+base_gnn:
+  booster: gbtree
+  colsample_bylevel: 0.8410727103550356
+  colsample_bynode: 0.8835155250622978
+  colsample_bytree: 0.35963405612230714
+  gamma: 0.8851004414211963
+  grow_policy: depthwise
+  lr: 0.054671586362931145
+  max_depth: 4
+  max_leaves: 0
+  n_estimators: 392
+  subsample: 0.9075728015139944
+batch_size: 2048
+dataset:
+  binary_sens: false
+  discard_attrs:
+    - NoDefaultNextMonth,Single
+  force_reprep: false
+  name: Credit
+  pred_attrs:
+    - EducationLevel
+  sens_attrs:
+    - Age
+  small_class: false
+dataset_dir: /users/$USER/conformal-fairness/datasets
+dataset_loading_style: split
+dataset_n_samples_per_class: null
+dataset_split_fractions:
+  calib: 0.1
+  train: 0.3
+  valid: 0.2
+epochs: 25
+job_id: hpt_basexgb_Credit
+logging_config:
+  use_tensorboard: false
+  use_terminal: false
+  use_wandb: false
+  wandb_config:
+    group: base
+    job_type: debug
+    log_model: false
+    offline: false
+
+    run_name: null
+num_workers: 1
+output_dir: ./outputs
+resource_config:
+  cpus: 20
+  custom: {}
+  gpus: 1
+  nodes: 1
+resume_from_checkpoint: false

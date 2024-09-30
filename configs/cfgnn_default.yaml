@@ -1,0 +1,58 @@
+seed: 0
+dataset:
+  name: "PubMed"
+dataset_loading_style: "split"
+dataset_split_fractions:
+  train: 0.3
+  valid: 0.1
+  calib: 0.1
+output_dir: "./outputs"
+dataset_dir: "./datasets"
+num_workers: 1
+job_id: "cfgnn_basegnn_cora_debug"
+
+resource_config:
+  cpus: 28
+  nodes: 1
+  gpus: 1
+
+logging_config:
+  use_wandb: False
+  use_terminal: True
+  wandb_config:
+
+    log_model: False
+    group: "conformal"
+    job_type: "debug"
+
+confgnn_config:
+  model: "GCN"
+  hidden_channels: 16
+  heads: 1
+  layers: 2
+  aggr: "mean"
+  lr: 0.01
+
+  train_fn: "aps"
+  eval_fn: "aps"
+  use_aps_epsilon: False
+  label_train_fraction: 1.0
+  ce_weight: 0.5
+  temperature: 0.5
+
+  load_probs: False
+
+epochs: 10
+batch_size: 256
+base_job_id: "basegnn_pubmed_debug"
+alpha: 0.1
+conformal_method: "cfgnn"
+conformal_metrics:
+  [
+    "set_sizes",
+    "coverage",
+    "efficiency",
+    "size_stratified_coverage",
+    "label_stratified_coverage",
+    "singleton_hit_ratio",
+  ]

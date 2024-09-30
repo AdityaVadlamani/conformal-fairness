@@ -1,0 +1,41 @@
+fairness_metric: Equal_Opportunity
+seed: 0
+dataset:
+  name: "ACSEducation"
+dataset_loading_style: "split"
+dataset_split_fractions:
+  train: 0.3
+  valid: 0.2
+output_dir: "./outputs"
+dataset_dir: "/users/$USER/conformal-fairness/datasets"
+num_workers: 1
+job_id: "basexgb_ACSEducation"
+
+logging_config:
+  use_wandb: False
+  wandb_config:
+
+    log_model: False
+    group: "conformal"
+    job_type: "debug"
+
+primitive_config:
+  use_tps_classwise: True
+  use_aps_epsilon: True
+
+diffusion_config:
+  use_tps_classwise: False
+  use_aps_epsilon: True
+
+base_job_id: "hpt_ACSEducation_xgb"
+alpha: 0.1
+conformal_method: "aps"
+conformal_metrics:
+  [
+    "set_sizes",
+    "coverage",
+    "efficiency",
+    "size_stratified_coverage",
+    "label_stratified_coverage",
+    "singleton_hit_ratio",
+  ]

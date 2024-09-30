@@ -1,0 +1,14 @@
+__pycache__/
+lightning_logs/
+outputs/
+processed/
+logs/
+wandb/
+
+analysis/.*
+
+!datasets/
+datasets/*
+!datasets/pokec-n-raw.zip 
+!datasets/pokec-z-raw.zip 
+!datasets/credit-raw.zip 
