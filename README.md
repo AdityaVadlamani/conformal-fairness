@@ -18,4 +18,6 @@ conda env export | grep -v "name" | grep -v "prefix" > environment.yml
 
 - `configs` contains configs for the different experiments
 
+- `BatchGCP` contains the code used for the BatchGCP experiments
+
 Remaining python files are used to run hyperparameter tuning and conformal prediction.
