@@ -132,7 +132,6 @@ class NAPSScore(APSScore):
         else:
             assert alpha is not None, f"Missing alpha value for quantile computation"
 
-        # TODO Figure Out A Dynamic Way to determine batch size
         # i.e based on batch size, k_hop input, and avg neighbors per node
         num_batches = self.config.num_batches
 

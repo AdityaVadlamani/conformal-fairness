@@ -1086,7 +1086,6 @@ def run_conformal(
     conformal_method = ConformalMethod(args.conformal_method)
     split_conf_input = get_split_conf(args)
     match conformal_method:
-        # TODO: move individual cases into separate functions in utils
         case ConformalMethod.TPS | ConformalMethod.APS | ConformalMethod.NAPS:
             cp = ScoreSplitConformalClassifer(config=args, datamodule=datamodule)
 

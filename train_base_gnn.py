@@ -66,19 +66,12 @@ def main():
         train_dl, val_dl = utils.enter_cpu_cxs(
             datamodule, ["train_dataloader", "val_dataloader"], stack
         )
-        # TODO: ensure that this loads the training checkpoint if halted
         trainer.fit(
             model=model,
             train_dataloaders=train_dl,
             val_dataloaders=val_dl,
             ckpt_path=None,
         )
-        # TODO: Is actual eval on test required?
-        # results = trainer.test(
-        #    model=model,
-        #    dataloaders=test_dl,
-        #    ckpt_path=best_callback.best_model_path
-        # ) #actual eval on test
 
     # run on all to get scores to use with alternative splits
     results = utils.run_basegnn_inference_alldl(

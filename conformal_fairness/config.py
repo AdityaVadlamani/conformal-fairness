@@ -52,7 +52,6 @@ class BaseGNNConfig:
             self.model in ltypes
         ), f"Invalid model type {self.model}, must be in {ltypes}."
         # assert self.aggr in ['mean', 'add', 'max'], f"Invalid aggregation method {self.aggr}."
-        # TODO: Optimal parammeter loading
 
 
 @dataclass
@@ -74,7 +73,6 @@ class BaseMLPConfig:
     #         self.model in ltypes
     #     ), f"Invalid model type {self.model}, must be in {ltypes}."
     #     # assert self.aggr in ['mean', 'add', 'max'], f"Invalid aggregation method {self.aggr}."
-    #     # TODO: Optimal parammeter loading
 
 
 @dataclass
@@ -110,7 +108,6 @@ class BaseXGBoostConfig:
     #         self.model in ltypes
     #     ), f"Invalid model type {self.model}, must be in {ltypes}."
     #     # assert self.aggr in ['mean', 'add', 'max'], f"Invalid aggregation method {self.aggr}."
-    #     # TODO: Optimal parammeter loading
 
 
 @dataclass

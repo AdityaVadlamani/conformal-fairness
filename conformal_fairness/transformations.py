@@ -159,7 +159,6 @@ class DiffusionTransformation(Transformation):
         gen = torch.Generator()
         gen.manual_seed(datamodule.seed)
 
-        # TODO: Should this be Calibration_TUNE (same as prior comp) or split again?
         calib_tune_nodes = datamodule.split_dict[Stage.CALIBRATION_TUNE]
         N = len(calib_tune_nodes)
         # use only the first half of the calibration set for tuning

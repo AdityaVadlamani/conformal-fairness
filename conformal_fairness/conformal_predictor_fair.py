@@ -81,7 +81,6 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
     ):
         # calibration using score quantile
         # assuming that score is exchangeable, this should work
-        # TODO: optimize the code here for the calls
         if self.conformal_method in [ConformalMethod.TPS, ConformalMethod.APS]:
             assert isinstance(split_conf_input, PrimitiveScoreConfig)
         elif self.conformal_method in [ConformalMethod.DAPS, ConformalMethod.DTPS]:
@@ -398,14 +397,6 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
 
         return torch.all(satisfying_arr) * lmbda
 
-        # AVERAGE METHOD
-        # TODO: Classwise version
-        avg_coverage_map = torch.mean(coverage_map, dim=-1)
-        avg_coverage_map_shifted = torch.mean(coverage_map - interval_widths, dim=-1)
-        alpha_min = min(avg_coverage_map_shifted)
-        alpha_max = max(avg_coverage_map)
-        return abs(alpha_max - alpha_min) <= self.config.closeness_measure
-
     def run(
         self,
         probs: torch.Tensor,
@@ -413,10 +404,6 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
         split_conf_input: SplitConfInput,
     ):
         self._compute_qhat(probs, labels, split_conf_input)
-        upper_bound_lambda = max(
-            1, math.ceil(1000 * torch.max(self._cached_scores)) / 1000
-        )
-        lower_bound_lambda = math.ceil(1000 * torch.min(self._qhat)) / 1000
 
         sort_res = (
             self._cached_scores[self._cached_scores >= torch.min(self._qhat)]
@@ -433,12 +420,6 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
         )
 
         print(f"Num Lambdas: {len(lambdas)}")
-
-        # lambdas = torch.arange(
-        #     lower_bound_lambda,
-        #     upper_bound_lambda + self.step_size,
-        #     step=self.step_size,
-        # )
 
         match self.config.fairness_metric:
             case fairness_metric.Equalized_Odds.name:

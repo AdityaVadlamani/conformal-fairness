@@ -68,7 +68,6 @@ class ScoreSplitConformalClassifer(SplitConformalClassifier):
     ):
         # calibration using score quantile
         # assuming that score is exchangeable, this should work
-        # TODO: optimize the code here for the calls
         if self.conformal_method in [ConformalMethod.TPS, ConformalMethod.APS]:
             assert isinstance(split_conf_input, PrimitiveScoreConfig)
         elif self.conformal_method == ConformalMethod.NAPS:
@@ -166,7 +165,6 @@ class ScoreMultiSplitConformalClassifier(ScoreSplitConformalClassifer):
         logger: CustomLogger,
     ):
         if self.conformal_method == ConformalMethod.CFGNN:
-            # TODO make confgnn_args a constant
             assert isinstance(split_conf_input, ConfGNNConfig)
             self._score_module = CFGNNScore(
                 conf_config=self.config,

@@ -156,12 +156,6 @@ class ClassificationDataset(DGLDataset):
                         as_tuple=True,
                     )[0]
 
-                    # TODO: Below line shouldn't be needed, but double check.
-                    # n_calib = len(calib_test_nodes) // 2
-                    # assert (
-                    #     calib_test_nodes.shape[0] > n_calib
-                    # ), f"n_calib ({n_calib}) must be smaller then alloted |test nodes| + |calib nodes| ({calib_test_nodes.shape[0]})"
-
                     if extra_calib_test_seed is not None:
                         calib_test_nodes = np.random.default_rng(
                             seed=extra_calib_test_seed
@@ -497,7 +491,6 @@ class DataModule(L.LightningDataModule):
                 graph = dataset[0]
 
                 if self.name not in CUSTOM_DATASETS:
-                    # TODO Set up in configs
                     node_degree_exact = True
                     node_degree_percentile = 0.25
 

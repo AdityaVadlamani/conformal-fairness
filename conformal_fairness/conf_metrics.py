@@ -71,10 +71,6 @@ def calc_size_stratified_coverage_violation(prediction_sets, labels, alpha):
     return torch.max(torch.abs(groupwise_coverages - (1 - alpha)))
 
 
-# def TODO: calibration set size distribution
-# def calibration_coverages(): pass
-
-
 def compute_metric(metric, prediction_sets, labels, alpha=None, features=None):
     match metric:
         case conf_metric_names.set_sizes.name:

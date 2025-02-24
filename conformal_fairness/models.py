@@ -229,7 +229,6 @@ class GNN(L.LightningModule):
         batch_pred = self.forward(mfgs, batch_inputs)
 
         self.test_acc(batch_pred.softmax(-1), batch_labels)
-        # TODO: Do we need to output test_acc?
         self.log(
             "test_acc",
             self.test_acc,
@@ -288,7 +287,6 @@ class CFGNN(L.LightningModule):
         train_score_fn = ELEM_SCORE_MAP.get(config.train_fn)
         eval_score_fn = ELEM_SCORE_MAP.get(config.eval_fn)
 
-        # TODO: Support for args (beyond use_aps_epsilon) for trian/eval score fn within the config
         fn_args = dict(
             config=PrimitiveScoreConfig(use_aps_epsilon=config.use_aps_epsilon),
             alpha=alpha,
@@ -389,7 +387,6 @@ class CFGNN(L.LightningModule):
 
             # use quantile to compute coformal scores for first half based on ConfTr
             # corr_test_scores = torch.sigmoid((-batch_scores[:n_calib//2] + corr_calib_quantile)/self.temperature)
-            # TODO: Try ReLU/alternative losses
             corr_test_scores = torch.relu(
                 (-batch_scores[: n_calib // 2] + corr_calib_quantile) / self.temperature
             )
