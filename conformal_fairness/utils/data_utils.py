@@ -16,7 +16,7 @@ from folktables import (
 )
 from sklearn.preprocessing import MinMaxScaler
 
-from .constants import *
+from ..constants import *
 
 
 def get_label_scores(labels, scores, mask, dataset):
@@ -32,19 +32,8 @@ def get_label_scores(labels, scores, mask, dataset):
     return label_scores[mask]
 
 
-def csr_matrix_to_torch_sparse_tensor(csr_mat):
-    """
-    Convert a scipy sparse matrix to a torch sparse tensor.
-    """
-    coo_mat = csr_mat.tocoo()
-    indices = torch.from_numpy(np.vstack((coo_mat.row, coo_mat.col)).astype(np.int64))
-    values = torch.from_numpy(coo_mat.data.astype(np.float32))
-    shape = torch.Size(coo_mat.shape)
-    return torch.sparse.FloatTensor(indices, values, shape)  # type: ignore
-
-
-def save_processed_graph(
-    features, labels, edge_list, dataset_path, sens_attr=None, extra_folders=""
+def save_processed_dataset(
+    dataset_path, features, labels, sens_attr=None, edge_list=None, extra_folders=""
 ):
     os.makedirs(os.path.join(dataset_path, PROCESSED_DIR, extra_folders), exist_ok=True)
     torch.save(
@@ -53,9 +42,11 @@ def save_processed_graph(
     torch.save(
         labels, os.path.join(dataset_path, PROCESSED_DIR, extra_folders, LABEL_FILE)
     )
-    torch.save(
-        edge_list, os.path.join(dataset_path, PROCESSED_DIR, extra_folders, EDGE_FILE)
-    )
+    if edge_list is not None:
+        torch.save(
+            edge_list,
+            os.path.join(dataset_path, PROCESSED_DIR, extra_folders, EDGE_FILE),
+        )
     if sens_attr is not None:
         torch.save(
             sens_attr,
@@ -63,17 +54,23 @@ def save_processed_graph(
         )
 
 
-def load_processed_graph(dataset_path, extra_folders=""):
+def load_processed_dataset(dataset_path, extra_folders=""):
+    edge_list = None
+    sens_attr = None
+
     features = torch.load(
         os.path.join(dataset_path, PROCESSED_DIR, extra_folders, FEATURE_FILE)
     )
     labels = torch.load(
         os.path.join(dataset_path, PROCESSED_DIR, extra_folders, LABEL_FILE)
     )
-    edge_list = torch.load(
+    if os.path.exists(
         os.path.join(dataset_path, PROCESSED_DIR, extra_folders, EDGE_FILE)
-    )
-    sens_attr = None
+    ):
+        edge_list = torch.load(
+            os.path.join(dataset_path, PROCESSED_DIR, extra_folders, EDGE_FILE)
+        )
+
     if os.path.exists(
         os.path.join(dataset_path, PROCESSED_DIR, extra_folders, SENS_FILE)
     ):
@@ -81,7 +78,7 @@ def load_processed_graph(dataset_path, extra_folders=""):
             os.path.join(dataset_path, PROCESSED_DIR, extra_folders, SENS_FILE)
         )
 
-    return features, labels, edge_list, sens_attr
+    return features, labels, sens_attr, edge_list
 
 
 def scale_attr(df, col_list):
@@ -92,7 +89,6 @@ def scale_attr(df, col_list):
     :param col_list:
     :return: attribute array of (n, len(col_list))
     """
-    n = df.shape[0]
     num_attrs = len(col_list)
     for attr_id in range(num_attrs):
         attr = col_list[attr_id]
@@ -117,14 +113,6 @@ def scale_attr(df, col_list):
             df[attr] = data
     arr = df[col_list].values
     return arr
-
-
-class Mapping:
-    """Used for mapping index of nodes since the data structure used for graph requires continuous index."""
-
-    def __init__(self, old2new, new2old):
-        self.old2new = old2new
-        self.new2old = new2old
 
 
 def read_nifty(
@@ -165,8 +153,6 @@ def read_nifty(
     )  # E x 2
     idx = np.arange(node_num)
     old2new = {j: i for i, j in enumerate(idx)}
-    new2old = {i: j for i, j in enumerate(idx)}
-    mapping = Mapping(old2new, new2old)
     edge_list = np.array(
         list(map(old2new.get, edges_unordered.flatten())), dtype=int
     ).reshape(edges_unordered.shape)
@@ -175,43 +161,14 @@ def read_nifty(
     bidirectional_edge = np.vstack((edge_list, reverse_edge))
     edge_list = np.unique(bidirectional_edge, axis=0).T  # Get rid of duplicates
 
-    save_processed_graph(
+    save_processed_dataset(
+        dataset_path,
         torch.from_numpy(features),
         torch.from_numpy(labels).reshape((-1,)),
         torch.from_numpy(edge_list),
-        dataset_path,
         torch.from_numpy(sens).reshape((-1,)),
         extra_folders="_".join(sens_attrs),
     )
-
-
-def prep_german(
-    dataset_path,
-    /,
-    *,
-    pred_attrs: List[str] = [],
-    discard_attrs: List[str] = [],
-    sens_attrs: List[str] = [],
-):
-    pred_attrs = pred_attrs or ["GoodCustomer"]
-    discard_attrs = discard_attrs or [
-        "OtherLoansAtStore",
-        "PurposeOfLoan",
-    ]
-    sens_attrs = sens_attrs or ["Gender"]
-
-    edge_file = "german_edges.txt"
-    csv_file = "german.csv"
-    read_nifty(
-        pred_attrs=pred_attrs,
-        discard_attrs=discard_attrs,
-        sens_attrs=sens_attrs,
-        dataset_path=dataset_path,
-        edge_file=edge_file,
-        csv_file=csv_file,
-    )
-
-    return pred_attrs, discard_attrs, sens_attrs
 
 
 def prep_credit(
@@ -228,31 +185,6 @@ def prep_credit(
 
     edge_file = "credit_edges.txt"
     csv_file = "credit.csv"
-    read_nifty(
-        pred_attrs=pred_attrs,
-        discard_attrs=discard_attrs,
-        sens_attrs=sens_attrs,
-        dataset_path=dataset_path,
-        edge_file=edge_file,
-        csv_file=csv_file,
-    )
-    return pred_attrs, discard_attrs, sens_attrs
-
-
-def prep_bail(
-    dataset_path,
-    /,
-    *,
-    pred_attrs: List[str] = [],
-    discard_attrs: List[str] = [],
-    sens_attrs: List[str] = [],
-):
-    pred_attrs = pred_attrs or ["RECID"]
-    discard_attrs = discard_attrs or []
-    sens_attrs = sens_attrs or ["WHITE"]
-
-    edge_file = "bail_edges.txt"
-    csv_file = "bail.csv"
     read_nifty(
         pred_attrs=pred_attrs,
         discard_attrs=discard_attrs,
@@ -317,7 +249,7 @@ def schl_transform(x):
     x += ((temp >= 18 - e) * (temp <= 20 + e)) * 4  # Started college/associates
     x += ((temp >= 21 - e) * (temp <= 21 + e)) * 5  # Bachelor's Degree
     x += ((temp >= 22 - e) * (temp <= 24 + e)) * 6  # Grad School/Professional Degree
-    # breakpoint()
+
     return x - 1
 
 
@@ -332,7 +264,7 @@ def schl_transform_small(x):
     ) * 2  # High School - no college  + # GED - no college + # Started college/associates
     x += ((temp >= 21 - e) * (temp <= 21 + e)) * 3  # Bachelor's Degree
     x += ((temp >= 22 - e) * (temp <= 24 + e)) * 4  # Grad School/Professional Degree
-    # breakpoint()
+
     return x - 1
 
 
@@ -414,11 +346,10 @@ def prep_education_level(dataset_path, dataset_args):
     features = torch.cat(feat_list, dim=0)
     labels = torch.cat(label_list)
     sens = torch.cat(sens_list)
-    edge_list = torch.empty((2, 0), dtype=torch.float32)
-    # breakpoint()
+
     if sens_binary:
         sens = (sens > 0) * 1  # White vs. Non-White
-    save_processed_graph(features, labels, edge_list, dataset_path, sens)
+    save_processed_dataset(dataset_path, features, labels, sens)
 
 
 def prep_acs_travel_time(dataset_path, dataset_args):
@@ -481,10 +412,9 @@ def prep_acs_travel_time(dataset_path, dataset_args):
     features = torch.cat(feat_list, dim=0)
     labels = torch.cat(label_list)
     sens = torch.cat(sens_list)
-    edge_list = torch.empty((2, 0), dtype=torch.float32)
     if sens_binary:
         sens = (sens > 0) * 1  # White vs. Non-White
-    save_processed_graph(features, labels, edge_list, dataset_path, sens)
+    save_processed_dataset(dataset_path, features, labels, sens)
 
 
 def time_breakdowns(x):
@@ -551,8 +481,7 @@ def prep_acs_income(
     sens = torch.cat(sens_list)
     if sens_binary:
         sens = (sens > 0) * 1  # White vs. Non-White
-    edge_list = torch.empty((2, 0), dtype=torch.float32)
-    save_processed_graph(features, labels, edge_list, dataset_path, sens)
+    save_processed_dataset(dataset_path, features, labels, sens)
 
 
 def tax_breakdowns(x):
@@ -563,7 +492,7 @@ def tax_breakdowns(x):
     val = x < -10
     for q in quantiles:
         val += (x >= q) * 1
-    # breakpoint()
+
     return val
     # return (x>=25000)*1 + (x>=50000)*1 + (x>=75000)*1 + (x>=100000)*1
     # return (x>=9525)*1 + (x>=38700)*1 + (x>=82500)*1 + (x>=157500)*1 + (x>=200000)*1  + (x>=500000)*1
@@ -674,12 +603,12 @@ def prep_fairgcn_datasets(
 
     assert sens_attr.shape[-1] == 1, f"{sens_attr.shape}"
 
-    save_processed_graph(
+    save_processed_dataset(
+        dataset_path,
         torch.from_numpy(features),
         torch.from_numpy(fill_labels.reshape((-1,))),
-        torch.from_numpy(edge_list),
-        dataset_path,
         torch.from_numpy(sens_attr.reshape((-1,))),
+        torch.from_numpy(edge_list),
         extra_folders="_".join(sens_attrs),
     )
 
@@ -689,21 +618,12 @@ def update_attrs(ds_name: str, /, *, pred_attrs, discard_attrs, sens_attrs):
         pred_attrs = pred_attrs or ["I_am_working_in_field"]
         discard_attrs = discard_attrs or []
         sens_attrs = sens_attrs or ["region", "gender"]
+        if len(sens_attrs) == 1 and sens_attrs[0] == "region_gender":
+            sens_attrs = ["region", "gender"]
     elif ds_name in [CREDIT]:
         pred_attrs = pred_attrs or ["NoDefaultNextMonth"]
         discard_attrs = discard_attrs or ["Single"]
         sens_attrs = sens_attrs or ["Age"]
-    elif ds_name in GERMAN:
-        pred_attrs = pred_attrs or ["GoodCustomer"]
-        discard_attrs = discard_attrs or [
-            "OtherLoansAtStore",
-            "PurposeOfLoan",
-        ]
-        sens_attrs = sens_attrs or ["Gender"]
-    elif ds_name in BAIL:
-        pred_attrs = pred_attrs or ["RECID"]
-        discard_attrs = discard_attrs or []
-        sens_attrs = sens_attrs or ["WHITE"]
 
     return pred_attrs, discard_attrs, sens_attrs
 
@@ -727,8 +647,6 @@ def data_prep(
         ds_func = {
             POKEC_N: prep_pokec_n,
             POKEC_Z: prep_pokec_z,
-            GERMAN: prep_german,
-            BAIL: prep_bail,
             CREDIT: prep_credit,
             ACS_INCOME: prep_acs_income,
             ACS_TRAVEL: prep_acs_travel_time,
@@ -749,13 +667,14 @@ def data_prep(
 
     except Exception as e:
         # dataset gen failed, delete the processed dir
-        shutil.rmtree(os.path.join(dataset_path, PROCESSED_DIR))
+        if os.path.exists(os.path.join(dataset_path, PROCESSED_DIR)):
+            shutil.rmtree(os.path.join(dataset_path, PROCESSED_DIR))
         raise e
 
 
 def create_graph(ds_name: str, ds_dir: str, extra_folders: str = ""):
     dataset_path = os.path.join(ds_dir, ds_name)
-    features, labels, edge_list, sens_attr = load_processed_graph(
+    features, labels, sens_attr, edge_list = load_processed_dataset(
         dataset_path, extra_folders
     )
     """
@@ -768,7 +687,7 @@ def create_graph(ds_name: str, ds_dir: str, extra_folders: str = ""):
 
     num_nodes = labels.shape[0]
     g = None  #
-    if ds_name in NON_GRAPH_DATASETS:
+    if ds_name in TABULAR_DATASETS:
         g = dgl.graph(([], []), num_nodes=num_nodes)
     else:
         g = dgl.graph((edge_list[0, :], edge_list[1, :]), num_nodes=num_nodes)
@@ -806,11 +725,19 @@ def get_custom_dataset(
             sens_attrs=sens_attrs,
             dataset_args=dataset_args,
         )
-    return create_graph(ds_name, ds_dir, extra_folders="_".join(sens_attrs))
+
+    if ds_name in GRAPH_DATASETS:
+        return create_graph(ds_name, ds_dir, extra_folders="_".join(sens_attrs))
+    else:
+        dataset_path = os.path.join(ds_dir, ds_name)
+        features, labels, sens_attr, _ = load_processed_dataset(
+            dataset_path, "_".join(sens_attrs)
+        )
+        return features, labels, sens_attr
 
 
 def get_edge_list(ds_name: str, ds_dir: str, graph: dgl.DGLGraph):
-    if ds_name in CUSTOM_DATASETS:
+    if ds_name in FAIRNESS_DATASETS:
         return torch.load(os.path.join(ds_dir, ds_name, PROCESSED_DIR, EDGE_FILE))
     else:
         return torch.stack(graph.edges(), dim=0)
@@ -829,7 +756,7 @@ def construct_grade(df, grade_attribute, n, all_label=False):
             if label is None:
                 label = (pd.cut(v, quantiles, labels=np.arange(n)) == 1) * 1
             else:
-                # breakpoint()
+
                 label += (pd.cut(v, quantiles, labels=np.arange(n)) == 1) * 1
         return label
     v = df[grade_attribute[0]].values
@@ -986,5 +913,4 @@ def load_enem(
     labels = torch.tensor(labels, dtype=torch.int64)
     sens = torch.tensor(sens, dtype=torch.float32)
     feat = torch.tensor(df.to_numpy(), dtype=torch.float32)
-    edge_list = torch.empty((2, 0), dtype=torch.float32)
-    save_processed_graph(feat, labels, edge_list, dataset_path, sens)
+    save_processed_dataset(dataset_path, feat, labels, sens)

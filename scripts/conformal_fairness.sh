@@ -57,7 +57,6 @@ python run_conformal_fairness.py --config_path=${config_path} \
     --job_id=c_${METRIC}_${METHOD}_${USE_CLASSWISE}${SENS_ATTR_PREFIX} \
     --base_job_id=${base_job_id} \
     --use_classwise_lambdas ${USE_CLASSWISE} \
-    --dataset_loading_style split \
     --dataset_split_fractions.train ${TRAIN_FRAC} \
     --dataset_split_fractions.valid ${VAL_FRAC}  \
     --dataset.sens_attrs '["${SENS_ATTR}"]' \

@@ -1,8 +1,8 @@
 seed: 0
 
-base_gnn:
+base_model_config:
   model: "GCN"
-  hidden_channels: 32
+  hidden_layer_size: 32
   heads: 2
   layers: 2
   aggr: "mean"
@@ -11,7 +11,6 @@ base_gnn:
 logging_config:
   use_wandb: False
   wandb_config:
-
     log_model: False
     group: "base"
     job_type: "debug"
@@ -28,7 +27,6 @@ resource_config:
   cpus: 20
   nodes: 1
   gpus: 1
-dataset_loading_style: "split"
 dataset_split_fractions:
   train: 0.3
   valid: 0.1

@@ -31,7 +31,7 @@ for DATASET in "Pokec_n" "Pokec_z"; do
         fi
 sbatch <<EOT
 #!/bin/bash
-#SBATCH --account PAS2030
+#SBATCH --account PAS2065
 #SBATCH --partition=gpuserial
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1

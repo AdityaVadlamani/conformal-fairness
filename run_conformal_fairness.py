@@ -1,11 +1,11 @@
 import logging
 import os
 
-import conformal_fairness.utils as utils
+from conformal_fairness import utils
 import pandas as pd
 import pyrallis.argparsing as pyr_a
 from conformal_fairness.config import ConfFairExptConfig
-from conformal_fairness.constants import ConformalMethod, fairness_metric, sample_type
+from conformal_fairness.constants import ConformalMethod, FairnessMetric
 
 # not adding this to constants since this is only a utility for easy wandb plots
 CUSTOM_STEP = "custom_step"  # helper for wandb plots
@@ -22,7 +22,7 @@ def main() -> None:
     base_expt_config = utils.load_basegnn_config_from_ckpt(base_ckpt_dir)
     utils.check_sampling_consistent(base_expt_config, args)
 
-    if args.calib_test_equal and args.dataset_loading_style == sample_type.split.name:
+    if args.calib_test_equal:
         assert args.dataset_split_fractions is not None
         args.dataset_split_fractions.calib = (
             (
@@ -38,10 +38,7 @@ def main() -> None:
     utils.set_seed_and_precision(args.seed)
     datamodule = utils.prepare_datamodule(args)
 
-    if args.use_risk_control:
-        fairness_trials_dir = f"analysis/fairness_trials_crc/{args.dataset.name}_{'_'.join(args.dataset.sens_attrs)}/{args.fairness_metric}/{args.use_classwise_lambdas}"
-    else:
-        fairness_trials_dir = f"analysis/fairness_trials_more/{args.dataset.name}_{'_'.join(args.dataset.sens_attrs)}/{args.fairness_metric}/{args.use_classwise_lambdas}"
+    fairness_trials_dir = f"analysis/fairness_trials/{args.dataset.name}_{'_'.join(args.dataset.sens_attrs)}/{args.fairness_metric}/{args.use_classwise_lambdas}"
     os.makedirs(
         fairness_trials_dir,
         exist_ok=True,
@@ -49,7 +46,7 @@ def main() -> None:
 
     dfs = []
     try:
-        if args.fairness_metric == fairness_metric.Disparate_Impact.name:
+        if args.fairness_metric == FairnessMetric.DISPARATE_IMPACT.value:
             c_list = [0.8]
         else:
             c_list = [0.05, 0.1, 0.15, 0.20]
@@ -61,32 +58,24 @@ def main() -> None:
                 # reshuffle the calibration and test sets if required
                 datamodule.resplit_calib_test(args)
 
-                if args.use_risk_control:
+                if args.conformal_method in [
+                    ConformalMethod.DAPS,
+                    ConformalMethod.DTPS,
+                ]:
+                    args.diffusion_config.use_tps_classwise = True
+
+                if args.conformal_method in [
+                    ConformalMethod.DAPS,
+                    ConformalMethod.DTPS,
+                    ConformalMethod.CFGNN,
+                ]:
                     datamodule.split_calib_tune_qscore(tune_frac=args.tuning_fraction)
-
-                    print("\n\nRunning with conformal risk control:")
-                    _, _, res = utils.run_conformal_risk_control(args, datamodule)
                 else:
-                    if args.conformal_method in [
-                        ConformalMethod.DAPS,
-                        ConformalMethod.DTPS,
-                    ]:
-                        args.diffusion_config.use_tps_classwise = True
+                    # No prior or extra probabilities needed
+                    datamodule.split_calib_tune_qscore(tune_frac=0)
 
-                    if args.conformal_method in [
-                        ConformalMethod.DAPS,
-                        ConformalMethod.DTPS,
-                        ConformalMethod.CFGNN,
-                    ]:
-                        datamodule.split_calib_tune_qscore(
-                            tune_frac=args.tuning_fraction
-                        )
-                    else:
-                        # No prior or extra probabilities needed
-                        datamodule.split_calib_tune_qscore(tune_frac=0)
-
-                    print("\n\nRunning with conformal prediction fairness:")
-                    _, _, res = utils.run_conformal_fairness(args, datamodule)
+                print("\n\nRunning with conformal prediction fairness:")
+                _, _, res = utils.run_conformal_fairness(args, datamodule)
 
                 dfs.append(pd.DataFrame({k: [v] for k, v in res.items()}))
 

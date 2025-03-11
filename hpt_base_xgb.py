@@ -2,7 +2,7 @@ import logging
 import os
 import shutil
 
-import conformal_fairness.utils as utils
+from conformal_fairness import utils
 import pyrallis.argparsing as pyr_a
 from conformal_fairness.config import BaseExptConfig
 from conformal_fairness.constants import *
@@ -16,11 +16,10 @@ logger.setLevel(logging.INFO)
 
 
 def update_params(base_config: BaseExptConfig, new_config):
-    utils.update_dataclass_from_dict(base_config.base_gnn, new_config)
+    utils.update_dataclass_from_dict(base_config.base_model_config, new_config)
 
 
 def train_func(config, base_config: BaseExptConfig, num_trials):
-    # breakpoint()
     update_params(base_config, config)
     sum_acc = 0
     base_seed = base_config.seed
@@ -41,7 +40,6 @@ def train_func(config, base_config: BaseExptConfig, num_trials):
 
 
 def train_func_list(config, base_config: BaseExptConfig, num_trials, datamodule_list):
-    # breakpoint()
     update_params(base_config, config)
     sum_acc = 0
     base_seed = base_config.seed
@@ -81,7 +79,7 @@ def main():
 
     utils.prepare_datamodule(args)
 
-    # datamodule.setup_sampler(args.base_gnn.layers)
+    # datamodule.setup_sampler(args.base_model_config.layers)
 
     # create logger and log expt hyperparams
     expt_logger = CustomLogger(args.logging_config)
@@ -152,10 +150,8 @@ def main():
 
     best_result = res.get_best_result()
     best_config = args
-    # breakpoint()
     update_params(best_config, best_result.metrics["config"])
     utils.output_basegnn_config(ckpt_dir, best_config)
-    # breakpoint()
 
 
 if __name__ == "__main__":

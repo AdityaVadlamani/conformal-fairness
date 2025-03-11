@@ -2,19 +2,18 @@ fairness_metric: Equal_Opportunity
 seed: 0
 dataset:
   name: "ACSEducation"
-dataset_loading_style: "split"
+
 dataset_split_fractions:
   train: 0.3
   valid: 0.2
 output_dir: "./outputs"
-dataset_dir: "/users/$USER/conformal-fairness/datasets"
+dataset_dir: "/users/adityatv/conformal-fairness/datasets"
 num_workers: 1
 job_id: "basexgb_ACSEducation"
 
 logging_config:
   use_wandb: False
   wandb_config:
-
     log_model: False
     group: "conformal"
     job_type: "debug"

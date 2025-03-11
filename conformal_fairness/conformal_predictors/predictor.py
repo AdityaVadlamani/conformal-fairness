@@ -3,8 +3,7 @@ from typing import Dict, Optional
 import torch
 from dgl.dataloading import MultiLayerFullNeighborSampler
 
-from .confgnn_score import CFGNNScore
-from .config import (
+from ..config import (
     ConfExptConfig,
     ConfGNNConfig,
     DiffusionConfig,
@@ -13,16 +12,17 @@ from .config import (
     RegularizedConfig,
     SplitConfInput,
 )
-from .constants import ConformalMethod, Stage
-from .custom_logger import CustomLogger
-from .data_module import DataModule
-from .data_utils import get_label_scores
-from .scores import APSScore, NAPSScore, TPSScore
-from .transformations import (
+from ..constants import ConformalMethod, Stage
+from ..cp_methods.confgnn_score import CFGNNScore
+from ..cp_methods.scores import APSScore, NAPSScore, TPSScore
+from ..cp_methods.transformations import (
     DiffusionTransformation,
     PredSetTransformation,
     RegularizationTransformation,
 )
+from ..custom_logger import CustomLogger
+from ..data import BaseDataModule
+from ..utils.data_utils import get_label_scores
 
 
 class ConformalPredictor:
@@ -35,13 +35,13 @@ class ConformalPredictor:
 
 
 class ConformalClassifier(ConformalPredictor):
-    def __init__(self, config: ConfExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(self, config: ConfExptConfig, datamodule: BaseDataModule, **kwargs):
         super().__init__(config, **kwargs)
         self.datamodule = datamodule
 
 
 class SplitConformalClassifier(ConformalClassifier):
-    def __init__(self, config: ConfExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(self, config: ConfExptConfig, datamodule: BaseDataModule, **kwargs):
         super().__init__(config, datamodule, **kwargs)
 
     def calibrate(self, **calib_data):
@@ -52,7 +52,7 @@ class SplitConformalClassifier(ConformalClassifier):
 class ScoreSplitConformalClassifer(SplitConformalClassifier):
     """A score based split conformal classifier"""
 
-    def __init__(self, config: ConfExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(self, config: ConfExptConfig, datamodule: BaseDataModule, **kwargs):
         super().__init__(config, datamodule, **kwargs)
         self.conformal_method = ConformalMethod(config.conformal_method)
         self.split_dict: Dict[Stage, torch.LongTensor] = datamodule.split_dict
@@ -141,11 +141,11 @@ class ScoreSplitConformalClassifer(SplitConformalClassifier):
 
 
 class ScoreMultiSplitConformalClassifier(ScoreSplitConformalClassifer):
-    def __init__(self, config: ConfExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(self, config: ConfExptConfig, datamodule: BaseDataModule, **kwargs):
         super().__init__(config, datamodule, **kwargs)
         self.best_params = None
 
-    def get_dataloader(self, nodes, batch_size=-1):
+    def get_dataloader(self, points, batch_size=-1):
         if self.conformal_method == ConformalMethod.CFGNN:
             assert isinstance(self._score_module, CFGNNScore)
             total_num_layers = self._score_module.total_layers
@@ -153,8 +153,8 @@ class ScoreMultiSplitConformalClassifier(ScoreSplitConformalClassifer):
             # if batch_size < 0:
             #    raise ValueError("Unexpected batch size")
             if batch_size < 0:
-                batch_size = len(nodes)
-            return self.datamodule.custom_nodes_dataloader(nodes, batch_size, sampler)
+                batch_size = len(points)
+            return self.datamodule.custom_dataloader(points, batch_size, sampler)
         else:
             raise NotImplementedError
 
@@ -172,19 +172,19 @@ class ScoreMultiSplitConformalClassifier(ScoreSplitConformalClassifer):
                 confgnn_config=split_conf_input,
                 logger=logger,
             )
-            calib_tune_nodes = self.split_dict[Stage.CALIBRATION_TUNE]
-            calib_qscore_nodes = self.split_dict[Stage.CALIBRATION_QSCORE]
+            calib_tune_points = self.split_dict[Stage.CALIBRATION_TUNE]
+            calib_qscore_points = self.split_dict[Stage.CALIBRATION_QSCORE]
             calib_tune_dl = self.get_dataloader(
-                calib_tune_nodes, self.config.batch_size
+                calib_tune_points, self.config.batch_size
             )
             calib_qscore_dl = self.get_dataloader(
-                calib_qscore_nodes, self.config.batch_size
+                calib_qscore_points, self.config.batch_size
             )
             scores = self._score_module.learn_params(calib_tune_dl, calib_qscore_dl)
 
-            calib_qscore_nodes = self.split_dict[Stage.CALIBRATION_QSCORE]
+            calib_qscore_points = self.split_dict[Stage.CALIBRATION_QSCORE]
             label_scores = get_label_scores(
-                labels, scores, calib_qscore_nodes, self.config.dataset.name
+                labels, scores, calib_qscore_points, self.config.dataset.name
             )
 
             self._qhat = self._score_module.compute_quantile(
@@ -269,14 +269,14 @@ class ScoreMultiSplitConformalClassifier(ScoreSplitConformalClassifer):
         self._cached_scores = scores
 
         # compute quantile on separate subset
-        calib_qscore_nodes = self.split_dict[Stage.CALIBRATION_QSCORE]
+        calib_qscore_points = self.split_dict[Stage.CALIBRATION_QSCORE]
         label_scores = get_label_scores(
-            labels, scores, calib_qscore_nodes, self.config.dataset.name
+            labels, scores, calib_qscore_points, self.config.dataset.name
         )
 
         if isinstance(self._score_module, TPSScore):
             kwargs = {
-                "labels": labels[calib_qscore_nodes],
+                "labels": labels[calib_qscore_points],
                 "num_classes": self.datamodule.num_classes,
             }
         else:
@@ -301,7 +301,7 @@ class ScoreMultiSplitConformalClassifier(ScoreSplitConformalClassifer):
         # update splits
         self.split_dict = self.datamodule.split_dict
 
-        test_nodes = self.split_dict[Stage.TEST]
+        test_points = self.split_dict[Stage.TEST]
 
         if isinstance(split_conf_input, ConfGNNConfig):
             if split_conf_input.load_probs:
@@ -311,7 +311,7 @@ class ScoreMultiSplitConformalClassifier(ScoreSplitConformalClassifer):
                 split_conf_input=split_conf_input,
                 logger=logger,
             )
-            test_dl = self.get_dataloader(test_nodes, self.config.batch_size)
+            test_dl = self.get_dataloader(test_points, self.config.batch_size)
             test_scores, test_labels = self._score_module.pipe_compute(test_dl)
         elif isinstance(split_conf_input, DiffusionConfig):
             qhat = self.calibrate_with_probs(
@@ -319,8 +319,8 @@ class ScoreMultiSplitConformalClassifier(ScoreSplitConformalClassifer):
                 labels=labels,
                 split_conf_input=split_conf_input,
             )
-            test_labels = labels[test_nodes]
-            test_scores = self._cached_scores[test_nodes]
+            test_labels = labels[test_points]
+            test_scores = self._cached_scores[test_points]
 
         elif isinstance(split_conf_input, RegularizedConfig):
             qhat = self.calibrate_with_probs(
@@ -333,7 +333,7 @@ class ScoreMultiSplitConformalClassifier(ScoreSplitConformalClassifer):
                 test_scores = self._cached_scores[self.split_dict[Stage.TEST]]
             else:
                 # need to recompute scores for sets in original RAPS to adjust random sets
-                test_probs = probs[test_nodes]
+                test_probs = probs[test_points]
                 test_scores = self._score_module.pipe_compute(test_probs)
                 test_scores = self._transform_module.transform(
                     test_scores, test_probs, raps_modified=True, **self.best_params

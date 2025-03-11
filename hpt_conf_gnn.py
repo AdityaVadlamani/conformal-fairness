@@ -1,9 +1,8 @@
 import logging
-import os
 from itertools import product
 from typing import Any, Dict
 
-import conformal_fairness.utils as utils
+from conformal_fairness import utils
 import numpy as np
 import pyrallis.argparsing as pyr_a
 import ray.train
@@ -11,19 +10,17 @@ from conformal_fairness.config import ConfExptConfig, DatasetSplitConfig
 from conformal_fairness.constants import (
     CREDIT,
     ConformalMethod,
+    LayerType,
     Stage,
-    layer_types,
-    sample_type,
 )
 from conformal_fairness.custom_logger import CustomLogger
 from conformal_fairness.models import CFGNN
+from hpt_config import ConfGNNTuneExptConfig
 from ray import tune
 from ray.train import CheckpointConfig, RunConfig, ScalingConfig
 from ray.train.lightning import RayDDPStrategy, RayLightningEnvironment, prepare_trainer
 from ray.train.torch import TorchTrainer
 from ray.tune.schedulers import ASHAScheduler
-
-from hpt_config import ConfGNNTuneExptConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -48,15 +45,8 @@ def create_tune_jobid_from_config(config: ConfExptConfig) -> str:
     """Create a job name from the config for easy w&b grouping.
     Since we launch n_trials_per_config for each config, we will use the fixed part of the config to generate a job name.
     """
-    loading_style = config.dataset_loading_style
-    match loading_style:
-        case sample_type.split.name:
-            split_fractions = config.dataset_split_fractions
-            return f"{config.dataset.name}_{config.confgnn_config.model}_{loading_style}_{split_fractions.train}_{split_fractions.valid}_{'_'.join(config.dataset.sens_attrs)}"  # type: ignore
-        case sample_type.n_samples_per_class.name:
-            return f"{config.dataset.name}_{config.confgnn_config.model}_{loading_style}_{config.dataset_n_samples_per_class}_{'_'.join(config.dataset.sens_attrs)}"  # type: ignore
-        case _:
-            raise ValueError("Unsupported loading style")
+    split_fractions = config.dataset_split_fractions
+    return f"{config.dataset.name}_{config.confgnn_config.model}_{split_fractions.train}_{split_fractions.valid}_{'_'.join(config.dataset.sens_attrs)}"  # type: ignore
 
 
 def get_aggr_func(aggr: str):
@@ -147,7 +137,8 @@ def train_func(cfgnn_tune_config: ConfGNNTuneExptConfig, new_config: Dict[str, A
             datamodule.setup_sampler(conf_config.confgnn_config.layers)
         else:
             datamodule.setup_sampler(
-                conf_config.confgnn_config.layers + base_expt_config.base_gnn.layers
+                conf_config.confgnn_config.layers
+                + base_expt_config.base_model_config.layers
             )
 
         model = CFGNN(
@@ -165,13 +156,13 @@ def train_func(cfgnn_tune_config: ConfGNNTuneExptConfig, new_config: Dict[str, A
         )
         trainer = prepare_trainer(trainer)
 
-        calib_tune_nodes = datamodule.split_dict[Stage.CALIBRATION_TUNE]
+        calib_tune_points = datamodule.split_dict[Stage.CALIBRATION_TUNE]
 
-        calib_tune_dl = datamodule.custom_nodes_dataloader(
-            calib_tune_nodes,
+        calib_tune_dl = datamodule.custom_dataloader(
+            calib_tune_points,
             conf_config.batch_size,
             shuffle=True,
-            drop_last=len(calib_tune_nodes) % conf_config.batch_size,
+            drop_last=len(calib_tune_points) % conf_config.batch_size,
         )
 
         with utils.dl_affinity_setup(calib_tune_dl)():
@@ -207,10 +198,7 @@ def main():
     args: ConfGNNTuneExptConfig = pyr_a.parse(config_class=ConfGNNTuneExptConfig)
     aggr_metric_name = get_aggr_metric_name(args.metric_aggr, args.metric_used)
 
-    if (
-        args.calib_test_equal
-        and args.conf_expt_config.dataset_loading_style == sample_type.split.name
-    ):
+    if args.calib_test_equal:
         args.conf_expt_config.dataset_split_fractions.calib = (
             1
             - args.conf_expt_config.dataset_split_fractions.train
@@ -222,13 +210,9 @@ def main():
     # ensure dataset download before launching
     utils.prepare_datamodule(args.conf_expt_config)
 
-    match t_config.s_type:
-        case sample_type.split.name:
-            expt_loop_space = list(
-                product(args.l_types, t_config.train_fracs, t_config.val_fracs)
-            )
-        case sample_type.n_samples_per_class.name:
-            expt_loop_space = list(product(args.l_types, t_config.samples_per_class))
+    expt_loop_space = list(
+        product(args.l_types, t_config.train_fracs, t_config.val_fracs)
+    )
 
     # we will intialize the config partially and pass into the tune function
     # all experiments run in this script are generated from this
@@ -240,31 +224,24 @@ def main():
         l_type = split_config[0]
 
         expt_config.confgnn_config.model = l_type
-        expt_config.dataset_loading_style = t_config.s_type
 
-        match t_config.s_type:
-            case sample_type.split.name:
-                assert len(split_config) == 3
-                expt_config.dataset_split_fractions = DatasetSplitConfig()
-                expt_config.dataset_split_fractions.train = split_config[1]
-                expt_config.dataset_split_fractions.valid = split_config[2]
-
-            case sample_type.n_samples_per_class.name:
-                assert len(split_config) == 2
-                expt_config.dataset_n_samples_per_class = split_config[1]
+        assert len(split_config) == 3
+        expt_config.dataset_split_fractions = DatasetSplitConfig()
+        expt_config.dataset_split_fractions.train = split_config[1]
+        expt_config.dataset_split_fractions.valid = split_config[2]
 
         search_space = {
             f"{CFGNN_PREFIX}lr": tune.loguniform(1e-4, 1e-1),
-            f"{CFGNN_PREFIX}hidden_channels": tune.choice([16, 32, 64, 128]),
+            f"{CFGNN_PREFIX}hidden_layer_size": tune.choice([16, 32, 64, 128]),
             f"{CFGNN_PREFIX}layers": tune.choice([1, 2, 3, 4]),
             f"{CFGNN_PREFIX}dropout": tune.uniform(0.1, 0.8),
             f"{CFGNN_PREFIX}temperature": tune.loguniform(1e-3, 1e1),
         }
 
         match l_type:
-            case layer_types.GAT.name:
+            case LayerType.GAT.value:
                 search_space[f"{CFGNN_PREFIX}heads"] = tune.choice([2, 4])
-            case layer_types.GraphSAGE.name:
+            case LayerType.GRAPHSAGE.value:
                 search_space[f"{CFGNN_PREFIX}aggr"] = tune.choice(
                     ["mean", "gcn", "pool", "lstm"]
                 )
@@ -284,10 +261,7 @@ def main():
             placement_strategy="SPREAD",
         )
 
-        if expt_config.dataset_loading_style == sample_type.split.name:
-            name = f"{expt_config.dataset}/{expt_config.dataset_loading_style}/{expt_config.dataset_split_fractions.train}_{expt_config.dataset_split_fractions.valid}_{expt_config.confgnn_config.model}"
-        else:
-            name = f"{expt_config.dataset}/{expt_config.dataset_loading_style}/{expt_config.dataset_n_samples_per_class}_{expt_config.confgnn_config.model}"
+        name = f"{expt_config.dataset}/{expt_config.dataset_split_fractions.train}_{expt_config.dataset_split_fractions.valid}_{expt_config.confgnn_config.model}"
 
         run_config = RunConfig(
             name=name,

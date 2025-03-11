@@ -2,17 +2,13 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from conformal_fairness.config import BaseExptConfig, ConfExptConfig
-from conformal_fairness.constants import layer_types, sample_type
+from conformal_fairness.constants import LayerType
 
 
 @dataclass
 class TuneSplitConfig:
     """Config for the split style of dataset loading."""
 
-    # dataset loading expt style (split or n_samples_per_class)
-    s_type: str = field(default=sample_type.split.name)
-    # num samples per class options to try
-    samples_per_class: List[int] = field(default_factory=list)
     # train split fraction options to try
     train_fracs: List[float] = field(default_factory=list)
     # valid split fraction options to try
@@ -38,7 +34,7 @@ class BaseTuneExptConfig:
     # aggregation function
     metric_aggr: str = field(default="mean")
     # layer types
-    l_types: List[str] = field(default_factory=lambda: [lt.name for lt in layer_types])
+    l_types: List[str] = field(default_factory=lambda: [lt.value for lt in LayerType])
     # tuning config
     tune_split_config: TuneSplitConfig = field(default_factory=TuneSplitConfig)
 

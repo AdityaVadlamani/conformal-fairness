@@ -3,6 +3,7 @@ from enum import Enum
 
 import torch
 
+
 WORKING_DIRECTORY = os.path.dirname(__file__)
 
 DATASET_DIRECTORY = os.path.join(WORKING_DIRECTORY, "datasets")
@@ -14,8 +15,6 @@ LABEL_FILE = "labels.pt"
 EDGE_FILE = "edge_list.pt"
 SENS_FILE = "sense_attr.pt"
 
-
-# OUTPUT_DIRECTORY = os.path.join(WORKING_DIRECTORY, "outputs")
 
 CPU_AFF = "enable_cpu_affinity"
 PYTORCH_PRECISION = "medium"
@@ -53,6 +52,11 @@ class ConformalMethod(str, Enum):
     CFGNN = "cfgnn"
 
 
+class DatasetType(str, Enum):
+    GRAPH = "graph"
+    TABULAR = "tabular"
+
+
 CORA = "Cora"
 CITESEER = "CiteSeer"
 PUBMED = "PubMed"
@@ -69,18 +73,20 @@ OGBN_DATASETS = [OGBN_PRODUCTS, OGBN_ARXIV]
 # Fairness datasets
 POKEC_N = "Pokec_n"
 POKEC_Z = "Pokec_z"
-NBA = "NBA"
-GERMAN = "German"
-BAIL = "Bail"
 CREDIT = "Credit"
 ACS_INCOME = "ACSIncome"
 ACS_TRAVEL = "ACSTravelTime"
-ENEM = 'ENEM'
-ACS_EDUC = 'ACSEducation'
+ENEM = "ENEM"
+ACS_EDUC = "ACSEducation"
 
-CUSTOM_DATASETS = [POKEC_N, POKEC_Z, NBA, GERMAN, BAIL, CREDIT, ACS_INCOME, ACS_TRAVEL, ENEM, ACS_EDUC]
+CUSTOM_GRAPH_DATASETS = [
+    POKEC_N,
+    POKEC_Z,
+    CREDIT,
+]
 
-CLASSIFICATION_DATASETS = (
+
+GRAPH_DATASETS = (
     [
         CORA,
         CITESEER,
@@ -91,13 +97,16 @@ CLASSIFICATION_DATASETS = (
         AMAZON_COMPUTERS,
         FLICKR,
     ]
-    + CUSTOM_DATASETS
     + OGBN_DATASETS
+    + CUSTOM_GRAPH_DATASETS
 )
 
-NON_GRAPH_DATASETS = [ACS_INCOME, ACS_TRAVEL, ENEM, ACS_EDUC]
+TABULAR_DATASETS = [ACS_INCOME, ACS_TRAVEL, ENEM, ACS_EDUC]
 NEEDS_FEAT_SCALING = [ENEM]
-FAIRNESS_DATASETS = CLASSIFICATION_DATASETS
+
+FAIRNESS_DATASETS = CUSTOM_GRAPH_DATASETS + TABULAR_DATASETS
+
+CLASSIFICATION_DATASETS = GRAPH_DATASETS + TABULAR_DATASETS
 
 
 class PreDefSplit(int, Enum):
@@ -109,7 +118,7 @@ class PreDefSplit(int, Enum):
 PREDEF_SPLIT_DATASETS = [FLICKR] + OGBN_DATASETS
 PREDDEF_FIELD = "Pre_Def_Split"
 
-PARTIALLY_LABELED = [POKEC_N, POKEC_Z, NBA]
+PARTIALLY_LABELED = [POKEC_N, POKEC_Z]
 
 FEATURE_FIELD = "feat"
 LABEL_FIELD = "label"
@@ -123,33 +132,30 @@ LABELS_KEY = "labels"
 BASEGNN_CKPT_CONFIG_FILE = "basegnn_config.yaml"
 BASEGNN_CKPT_PREFIX = "basegnn"
 
-conf_metric_names = Enum(
-    "conf_metrics",
-    [
-        "set_sizes",
-        "coverage",
-        "efficiency",
-        "feature_stratified_coverage",
-        "size_stratified_coverage",
-        "label_stratified_coverage",
-        "singleton_hit_ratio",
-        "size_stratified_coverage_violation",
-    ],
-)
-sample_type = Enum("sample_type", "split n_samples_per_class")
 
-layer_types = Enum("layer_types", ["GCN", "GAT", "GraphSAGE", "SGC"])
+class ConformalMetric(str, Enum):
+    SET_SIZES = "set_sizes"
+    COVERAGE = "coverage"
+    EFFICIENCY = "efficiency"
+    FEATURE_STRATIFIED_COVERAGE = "feature_stratified_coverage"
+    SIZE_STRATIFIED_COVERAGE = "size_stratified_coverage"
+    LABEL_STRATIFIED_COVERAGE = "label_stratified_coverage"
+    SINGLETON_HIT_RATIO = "singleton_hit_ratio"
+    SIZE_STRATIFIED_COVERAGE_VIOLATION = "size_stratified_coverage_violation"
 
-fairness_metric = Enum(
-    "fairness_metrics",
-    [
-        "Equal_Opportunity",
-        "Equalized_Odds",
-        "Predictive_Parity",
-        "Predictive_Equality",
-        "Demographic_Parity",
-        "Disparate_Impact",
-        "Conditional_Use_Acc_Equality",
-        "Overall_Acc_Equality",
-    ],
-)
+
+class LayerType(str, Enum):
+    GCN = "GCN"
+    GAT = "GAT"
+    GRAPHSAGE = "GraphSAGE"
+
+
+class FairnessMetric(str, Enum):
+    EQUAL_OPPORTUNITY = "Equal_Opportunity"
+    EQUALIZED_ODDS = "Equalized_Odds"
+    PREDICTIVE_PARITY = "Predictive_Parity"
+    PREDICTIVE_EQUALITY = "Predictive_Equality"
+    DEMOGRAPHIC_PARITY = "Demographic_Parity"
+    DISPARATE_IMPACT = "Disparate_Impact"
+    CONDITIONAL_USE_ACC_EQUALITY = "Conditional_Use_Acc_Equality"
+    OVERALL_ACC_EQUALITY = "Overall_Acc_Equality"

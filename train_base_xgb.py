@@ -1,14 +1,12 @@
 import logging
 import os
 import shutil
-from contextlib import ExitStack
 
-import conformal_fairness.utils as utils
+from conformal_fairness import utils
 import pyrallis.argparsing as pyr_a
 from conformal_fairness.config import BaseExptConfig
 from conformal_fairness.constants import *
 from conformal_fairness.custom_logger import CustomLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, TQDMProgressBar
 from xgboost import XGBClassifier
 
 logger = logging.getLogger(__name__)
@@ -41,7 +39,7 @@ def main():
     utils.set_seed_and_precision(args.seed)
     datamodule = utils.prepare_datamodule(args)
 
-    # datamodule.setup_sampler(args.base_gnn.layers)
+    # datamodule.setup_sampler(args.base_model_config.layers)
 
     # create logger and log expt hyperparams
     expt_logger = CustomLogger(args.logging_config)

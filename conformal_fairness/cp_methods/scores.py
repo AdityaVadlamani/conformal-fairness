@@ -5,9 +5,9 @@ from abc import ABC
 import torch
 from torch.masked import masked_tensor
 
-from .config import NeighborhoodConfig, PrimitiveScoreConfig
-from .constants import DEFAULT_DEVICE, ConformalMethod, Stage
-from .data_module import DataModule
+from ..config import NeighborhoodConfig, PrimitiveScoreConfig
+from ..constants import DEFAULT_DEVICE, Stage
+from ..data import BaseDataModule
 
 
 class CPScore(ABC):
@@ -119,7 +119,9 @@ class APSScore(CPScore):
 
 
 class NAPSScore(APSScore):
-    def __init__(self, config: NeighborhoodConfig, datamodule: DataModule, **kwargs):
+    def __init__(
+        self, config: NeighborhoodConfig, datamodule: BaseDataModule, **kwargs
+    ):
         super().__init__(
             PrimitiveScoreConfig(use_aps_epsilon=config.use_aps_epsilon), **kwargs
         )
@@ -293,10 +295,3 @@ class NAPSScore(APSScore):
             calib_scores, 0, quant_indexes[index_mask].to(dtype=torch.long)
         )
         return quantiles.view((-1, 1))
-
-
-# elementary scores map for pointwise scores
-ELEM_SCORE_MAP = {
-    ConformalMethod.TPS: TPSScore,
-    ConformalMethod.APS: APSScore,
-}

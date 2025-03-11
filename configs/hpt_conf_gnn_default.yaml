@@ -2,7 +2,7 @@ calib_test_equal: True
 conf_expt_config:
   seed: 0
   batch_size: 64
-  dataset_dir: "/users/$USER/conformal-fairness/datasets"
+  dataset_dir: "/users/adityatv/conformal-fairness/datasets"
   num_workers: 25
   epochs: 10
   alpha: 0.1
@@ -16,7 +16,7 @@ conf_expt_config:
 
   confgnn_config:
     model: "GCN"
-    hidden_channels: 16
+    hidden_layer_size: 16
     heads: 1
     layers: 2
     aggr: "mean"
@@ -31,7 +31,7 @@ conf_expt_config:
   dataset:
     name: "Cora"
 
-l_types: ["GCN", "GAT", "GraphSAGE"] # no SGC for now
+l_types: ["GCN", "GAT", "GraphSAGE"]
 tune_split_config:
   s_type: "split"
   samples_per_class: [10, 20]
