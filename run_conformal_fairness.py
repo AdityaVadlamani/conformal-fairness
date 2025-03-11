@@ -5,7 +5,7 @@ import conformal_fairness.utils as utils
 import pandas as pd
 import pyrallis.argparsing as pyr_a
 from conformal_fairness.config import ConfFairExptConfig
-from conformal_fairness.constants import ConformalMethod, fairness_metric, sample_type
+from conformal_fairness.constants import ConformalMethod, FairnessMetric, sample_type
 
 # not adding this to constants since this is only a utility for easy wandb plots
 CUSTOM_STEP = "custom_step"  # helper for wandb plots
@@ -49,7 +49,7 @@ def main() -> None:
 
     dfs = []
     try:
-        if args.fairness_metric == fairness_metric.Disparate_Impact.name:
+        if args.fairness_metric == FairnessMetric.DISPARATE_IMPACT.name:
             c_list = [0.8]
         else:
             c_list = [0.05, 0.1, 0.15, 0.20]

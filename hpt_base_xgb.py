@@ -20,7 +20,6 @@ def update_params(base_config: BaseExptConfig, new_config):
 
 
 def train_func(config, base_config: BaseExptConfig, num_trials):
-    # breakpoint()
     update_params(base_config, config)
     sum_acc = 0
     base_seed = base_config.seed
@@ -41,7 +40,6 @@ def train_func(config, base_config: BaseExptConfig, num_trials):
 
 
 def train_func_list(config, base_config: BaseExptConfig, num_trials, datamodule_list):
-    # breakpoint()
     update_params(base_config, config)
     sum_acc = 0
     base_seed = base_config.seed
@@ -152,10 +150,8 @@ def main():
 
     best_result = res.get_best_result()
     best_config = args
-    # breakpoint()
     update_params(best_config, best_result.metrics["config"])
     utils.output_basegnn_config(ckpt_dir, best_config)
-    # breakpoint()
 
 
 if __name__ == "__main__":

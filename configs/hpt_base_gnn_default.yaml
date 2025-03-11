@@ -17,7 +17,7 @@ expt_config:
   epochs: 10
 n_trials_per_config: 5
 
-l_types: ["GCN", "GAT", "GraphSAGE"] # no SGC for now
+l_types: ["GCN", "GAT", "GraphSAGE"]
 tune_split_config:
   s_type: "split"
   samples_per_class: [10, 20]

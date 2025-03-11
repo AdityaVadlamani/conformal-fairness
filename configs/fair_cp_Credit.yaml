@@ -1,8 +1,8 @@
-fairness_metric: Equal_Opportunity
+FairnessMetric: Equal_Opportunity
 seed: 0
 dataset:
   name: "Credit"
-dataset_loading_style: "split"
+
 dataset_split_fractions:
   train: 0.3
   valid: 0.2
@@ -14,7 +14,6 @@ job_id: "fair_basexgb_Credit"
 logging_config:
   use_wandb: False
   wandb_config:
-
     log_model: False
     group: "conformal"
     job_type: "debug"

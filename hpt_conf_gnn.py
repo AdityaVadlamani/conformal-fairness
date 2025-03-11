@@ -1,5 +1,4 @@
 import logging
-import os
 from itertools import product
 from typing import Any, Dict
 
@@ -11,19 +10,18 @@ from conformal_fairness.config import ConfExptConfig, DatasetSplitConfig
 from conformal_fairness.constants import (
     CREDIT,
     ConformalMethod,
+    LayerType,
     Stage,
-    layer_types,
     sample_type,
 )
 from conformal_fairness.custom_logger import CustomLogger
 from conformal_fairness.models import CFGNN
+from hpt_config import ConfGNNTuneExptConfig
 from ray import tune
 from ray.train import CheckpointConfig, RunConfig, ScalingConfig
 from ray.train.lightning import RayDDPStrategy, RayLightningEnvironment, prepare_trainer
 from ray.train.torch import TorchTrainer
 from ray.tune.schedulers import ASHAScheduler
-
-from hpt_config import ConfGNNTuneExptConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -255,16 +253,16 @@ def main():
 
         search_space = {
             f"{CFGNN_PREFIX}lr": tune.loguniform(1e-4, 1e-1),
-            f"{CFGNN_PREFIX}hidden_channels": tune.choice([16, 32, 64, 128]),
+            f"{CFGNN_PREFIX}hidden_layer_size": tune.choice([16, 32, 64, 128]),
             f"{CFGNN_PREFIX}layers": tune.choice([1, 2, 3, 4]),
             f"{CFGNN_PREFIX}dropout": tune.uniform(0.1, 0.8),
             f"{CFGNN_PREFIX}temperature": tune.loguniform(1e-3, 1e1),
         }
 
         match l_type:
-            case layer_types.GAT.name:
+            case LayerType.GAT.name:
                 search_space[f"{CFGNN_PREFIX}heads"] = tune.choice([2, 4])
-            case layer_types.GraphSAGE.name:
+            case LayerType.GRAPHSAGE.name:
                 search_space[f"{CFGNN_PREFIX}aggr"] = tune.choice(
                     ["mean", "gcn", "pool", "lstm"]
                 )

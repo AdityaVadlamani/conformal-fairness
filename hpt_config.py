@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from conformal_fairness.config import BaseExptConfig, ConfExptConfig
-from conformal_fairness.constants import layer_types, sample_type
+from conformal_fairness.constants import LayerType, sample_type
 
 
 @dataclass
@@ -38,7 +38,7 @@ class BaseTuneExptConfig:
     # aggregation function
     metric_aggr: str = field(default="mean")
     # layer types
-    l_types: List[str] = field(default_factory=lambda: [lt.name for lt in layer_types])
+    l_types: List[str] = field(default_factory=lambda: [lt.name for lt in LayerType])
     # tuning config
     tune_split_config: TuneSplitConfig = field(default_factory=TuneSplitConfig)
 

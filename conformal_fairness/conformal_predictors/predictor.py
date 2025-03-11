@@ -3,8 +3,7 @@ from typing import Dict, Optional
 import torch
 from dgl.dataloading import MultiLayerFullNeighborSampler
 
-from .confgnn_score import CFGNNScore
-from .config import (
+from ..config import (
     ConfExptConfig,
     ConfGNNConfig,
     DiffusionConfig,
@@ -13,16 +12,17 @@ from .config import (
     RegularizedConfig,
     SplitConfInput,
 )
-from .constants import ConformalMethod, Stage
-from .custom_logger import CustomLogger
-from .data_module import DataModule
-from .data_utils import get_label_scores
-from .scores import APSScore, NAPSScore, TPSScore
-from .transformations import (
+from ..constants import ConformalMethod, Stage
+from ..cp_methods.confgnn_score import CFGNNScore
+from ..cp_methods.scores import APSScore, NAPSScore, TPSScore
+from ..cp_methods.transformations import (
     DiffusionTransformation,
     PredSetTransformation,
     RegularizationTransformation,
 )
+from ..custom_logger import CustomLogger
+from ..data import BaseDataModule
+from ..utils.data_utils import get_label_scores
 
 
 class ConformalPredictor:
@@ -35,13 +35,13 @@ class ConformalPredictor:
 
 
 class ConformalClassifier(ConformalPredictor):
-    def __init__(self, config: ConfExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(self, config: ConfExptConfig, datamodule: BaseDataModule, **kwargs):
         super().__init__(config, **kwargs)
         self.datamodule = datamodule
 
 
 class SplitConformalClassifier(ConformalClassifier):
-    def __init__(self, config: ConfExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(self, config: ConfExptConfig, datamodule: BaseDataModule, **kwargs):
         super().__init__(config, datamodule, **kwargs)
 
     def calibrate(self, **calib_data):
@@ -52,7 +52,7 @@ class SplitConformalClassifier(ConformalClassifier):
 class ScoreSplitConformalClassifer(SplitConformalClassifier):
     """A score based split conformal classifier"""
 
-    def __init__(self, config: ConfExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(self, config: ConfExptConfig, datamodule: BaseDataModule, **kwargs):
         super().__init__(config, datamodule, **kwargs)
         self.conformal_method = ConformalMethod(config.conformal_method)
         self.split_dict: Dict[Stage, torch.LongTensor] = datamodule.split_dict
@@ -141,7 +141,7 @@ class ScoreSplitConformalClassifer(SplitConformalClassifier):
 
 
 class ScoreMultiSplitConformalClassifier(ScoreSplitConformalClassifer):
-    def __init__(self, config: ConfExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(self, config: ConfExptConfig, datamodule: BaseDataModule, **kwargs):
         super().__init__(config, datamodule, **kwargs)
         self.best_params = None
 

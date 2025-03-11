@@ -1,23 +1,22 @@
-import math
 from typing import Dict
 
 import torch
 from dgl.dataloading import MultiLayerFullNeighborSampler
 
-from .confgnn_score import CFGNNScore
-from .config import (
+from ..config import (
     ConfFairExptConfig,
     ConfGNNConfig,
     DiffusionConfig,
     PrimitiveScoreConfig,
     SplitConfInput,
 )
-from .constants import SENS_FIELD, ConformalMethod, Stage, fairness_metric
-from .data_module import DataModule
-from .data_utils import get_label_scores
-from .fair_utils import inverse_quantile
-from .scores import APSScore, TPSScore
-from .transformations import DiffusionTransformation, PredSetTransformation
+from ..constants import SENS_FIELD, ConformalMethod, FairnessMetric, Stage
+from ..cp_methods.confgnn_score import CFGNNScore
+from ..cp_methods.scores import APSScore, TPSScore
+from ..cp_methods.transformations import DiffusionTransformation, PredSetTransformation
+from ..data import BaseDataModule
+from ..utils.conf_utils import inverse_quantile
+from ..utils.data_utils import get_label_scores
 
 
 class FairConformalPredictor:
@@ -32,13 +31,17 @@ class FairConformalPredictor:
 
 
 class FairConformalClassifier(FairConformalPredictor):
-    def __init__(self, config: ConfFairExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(
+        self, config: ConfFairExptConfig, datamodule: BaseDataModule, **kwargs
+    ):
         super().__init__(config, **kwargs)
         self.datamodule = datamodule
 
 
 class SplitFairConformalClassifier(FairConformalClassifier):
-    def __init__(self, config: ConfFairExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(
+        self, config: ConfFairExptConfig, datamodule: BaseDataModule, **kwargs
+    ):
         super().__init__(config, datamodule, **kwargs)
 
     def calibrate(self, **calib_data):
@@ -49,7 +52,9 @@ class SplitFairConformalClassifier(FairConformalClassifier):
 class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
     """A score based split conformal classifier"""
 
-    def __init__(self, config: ConfFairExptConfig, datamodule: DataModule, **kwargs):
+    def __init__(
+        self, config: ConfFairExptConfig, datamodule: BaseDataModule, **kwargs
+    ):
         super().__init__(config, datamodule, **kwargs)
         self.conformal_method = ConformalMethod(config.conformal_method)
         self.split_dict: Dict[Stage, torch.LongTensor] = datamodule.split_dict
@@ -144,17 +149,17 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
         ), f"Got {labels.shape[0]} labels, but {groups.shape[0]} groups"
 
         match self.config.fairness_metric:
-            case fairness_metric.Equal_Opportunity.name:
+            case FairnessMetric.EQUAL_OPPORTUNITY.name:
                 label_satisfied = labels == pos_label
                 group_satisfied = groups == group_id
                 return (label_satisfied & group_satisfied).reshape(-1)
 
-            case fairness_metric.Predictive_Equality.name:
+            case FairnessMetric.PREDICTIVE_EQUALITY.name:
                 label_not_satisfied = labels != pos_label
                 group_satisfied = groups == group_id
                 return (label_not_satisfied & group_satisfied).reshape(-1)
 
-            case fairness_metric.Equalized_Odds.name:
+            case FairnessMetric.EQUALIZED_ODDS.name:
                 label_satisfied = labels == pos_label
                 label_not_satisfied = labels != pos_label
                 group_satisfied = groups == group_id
@@ -164,9 +169,9 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
                     (label_not_satisfied & group_satisfied).reshape(-1),
                 )
             case (
-                fairness_metric.Demographic_Parity.name
-                | fairness_metric.Disparate_Impact.name
-                | fairness_metric.Overall_Acc_Equality.name
+                FairnessMetric.DEMOGRAPHIC_PARITY.name
+                | FairnessMetric.DISPARATE_IMPACT.name
+                | FairnessMetric.OVERALL_ACC_EQUALITY.name
             ):
                 return (groups == group_id).reshape(-1)
             case _:
@@ -214,7 +219,7 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
         groups = self.datamodule.graph.ndata[SENS_FIELD]
 
         if self.config.fairness_metric not in [
-            fairness_metric.Overall_Acc_Equality.name
+            FairnessMetric.OVERALL_ACC_EQUALITY.name
         ]:
             classes = torch.arange(1, num_classes)
         else:
@@ -235,7 +240,7 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
                 )
 
                 if self.config.fairness_metric not in [
-                    fairness_metric.Overall_Acc_Equality.name
+                    FairnessMetric.OVERALL_ACC_EQUALITY.name
                 ]:
                     filtered_scores = self._cached_scores[calib_mask][
                         filtered_calib_mask
@@ -261,7 +266,7 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
         for label in classes:
             alpha_min = max(0, min(coverage_map[:, label] - interval_widths[:, label]))
             alpha_max = max(coverage_map[:, label])
-            if self.config.fairness_metric == fairness_metric.Disparate_Impact.name:
+            if self.config.fairness_metric == FairnessMetric.DISPARATE_IMPACT.name:
                 if (1 - alpha_max) / (
                     1 - alpha_min
                 ) < self.config.closeness_measure:  # Choose c = 0.8 for 80% rule
@@ -274,13 +279,6 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
             return satisfying_arr * lmbda
 
         return torch.all(satisfying_arr) * lmbda
-
-        # AVERAGE METHOD
-        avg_coverage_map = torch.mean(coverage_map, dim=-1)
-        avg_coverage_map_shifted = torch.mean(coverage_map - interval_widths, dim=-1)
-        alpha_min = min(avg_coverage_map_shifted)
-        alpha_max = max(avg_coverage_map)
-        return abs(alpha_max - alpha_min) <= self.config.closeness_measure
 
     def _satisfies_lambda_pp(
         self, labels: torch.Tensor, lmbda: torch.Tensor, balance_npv: bool = False
@@ -297,20 +295,20 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
 
         coverage_map = {
             "prior": torch.zeros((num_groups, num_classes)),
-            fairness_metric.Equal_Opportunity.name: torch.zeros(
+            FairnessMetric.EQUAL_OPPORTUNITY.name: torch.zeros(
                 (num_groups, num_classes)
             ),
-            fairness_metric.Demographic_Parity.name: torch.zeros(
+            FairnessMetric.DEMOGRAPHIC_PARITY.name: torch.zeros(
                 (num_groups, num_classes)
             ),
         }
 
         interval_widths = {
             "prior": torch.zeros((num_groups, num_classes)),
-            fairness_metric.Equal_Opportunity.name: torch.zeros(
+            FairnessMetric.EQUAL_OPPORTUNITY.name: torch.zeros(
                 (num_groups, num_classes)
             ),
-            fairness_metric.Demographic_Parity.name: torch.zeros(
+            FairnessMetric.DEMOGRAPHIC_PARITY.name: torch.zeros(
                 (num_groups, num_classes)
             ),
         }
@@ -320,7 +318,7 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
                     for key in coverage_map:
                         if key == "prior":
                             self.config.fairness_metric = (
-                                fairness_metric.Demographic_Parity.name
+                                FairnessMetric.DEMOGRAPHIC_PARITY.name
                             )
                             filtered_calib_mask = self._get_filter_mask(
                                 calib_labels, calib_groups, label, group_id
@@ -350,37 +348,37 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
                                 filtered_calib_mask.sum() + 1
                             )
                 finally:
-                    self.config.fairness_metric = fairness_metric.Predictive_Parity.name
+                    self.config.fairness_metric = FairnessMetric.PREDICTIVE_PARITY.name
 
         satisfying_arr = torch.ones(num_classes)
         for label in classes:
-            coverage_map[fairness_metric.Equal_Opportunity.name][:, label]
+            coverage_map[FairnessMetric.EQUAL_OPPORTUNITY.name][:, label]
 
             eo_min = (
-                coverage_map[fairness_metric.Equal_Opportunity.name][:, label]
-                - interval_widths[fairness_metric.Equal_Opportunity.name][:, label]
+                coverage_map[FairnessMetric.EQUAL_OPPORTUNITY.name][:, label]
+                - interval_widths[FairnessMetric.EQUAL_OPPORTUNITY.name][:, label]
             )
 
-            eo_max = coverage_map[fairness_metric.Equal_Opportunity.name][:, label]
+            eo_max = coverage_map[FairnessMetric.EQUAL_OPPORTUNITY.name][:, label]
 
             dp_min = (
-                coverage_map[fairness_metric.Demographic_Parity.name][:, label]
-                - interval_widths[fairness_metric.Demographic_Parity.name][:, label]
+                coverage_map[FairnessMetric.DEMOGRAPHIC_PARITY.name][:, label]
+                - interval_widths[FairnessMetric.DEMOGRAPHIC_PARITY.name][:, label]
             )
 
-            dp_max = coverage_map[fairness_metric.Demographic_Parity.name][:, label]
+            dp_max = coverage_map[FairnessMetric.DEMOGRAPHIC_PARITY.name][:, label]
 
             pr_min = coverage_map["prior"][:, label]
             pr_max = (
                 coverage_map["prior"][:, label] + interval_widths["prior"][:, label]
             )
 
-            # if (
-            #     balance_npv
-            #     and abs((eo_max) * pr_max / (dp_min) - (eo_min) * pr_min / (dp_max))
-            #     > self.config.closeness_measure
-            # ):
-            #     satisfying_arr[label] = 0
+            if (
+                balance_npv
+                and abs((eo_max) * pr_max / (dp_min) - (eo_min) * pr_min / (dp_max))
+                > self.config.closeness_measure
+            ):
+                satisfying_arr[label] = 0
 
             ppr_max = (1 - eo_min) * pr_max / (1 - dp_max)
 
@@ -422,38 +420,38 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
         print(f"Num Lambdas: {len(lambdas)}")
 
         match self.config.fairness_metric:
-            case fairness_metric.Equalized_Odds.name:
+            case FairnessMetric.EQUALIZED_ODDS.name:
                 try:
-                    self.config.fairness_metric = fairness_metric.Equal_Opportunity.name
+                    self.config.fairness_metric = FairnessMetric.EQUAL_OPPORTUNITY.name
                     eo_satisfying_lambdas = torch.stack(
                         [self._satisfies_lambda(labels, lmbda) for lmbda in lambdas]
                     )
                     self.config.fairness_metric = (
-                        fairness_metric.Predictive_Equality.name
+                        FairnessMetric.PREDICTIVE_EQUALITY.name
                     )
                     pe_satisfying_lambdas = torch.stack(
                         [self._satisfies_lambda(labels, lmbda) for lmbda in lambdas]
                     )
                 finally:
-                    self.config.fairness_metric = fairness_metric.Equalized_Odds.name
+                    self.config.fairness_metric = FairnessMetric.EQUALIZED_ODDS.name
 
                 satisfying_lambdas = torch.sqrt(
                     eo_satisfying_lambdas * pe_satisfying_lambdas
                 )
             case (
-                fairness_metric.Equal_Opportunity.name
-                | fairness_metric.Predictive_Equality.name
-                | fairness_metric.Demographic_Parity.name
-                | fairness_metric.Disparate_Impact.name
-                | fairness_metric.Overall_Acc_Equality.name
+                FairnessMetric.EQUAL_OPPORTUNITY.name
+                | FairnessMetric.PREDICTIVE_EQUALITY.name
+                | FairnessMetric.DEMOGRAPHIC_PARITY.name
+                | FairnessMetric.DISPARATE_IMPACT.name
+                | FairnessMetric.OVERALL_ACC_EQUALITY.name
             ):
                 satisfying_lambdas = torch.stack(
                     [self._satisfies_lambda(labels, lmbda) for lmbda in lambdas],
                 )
 
-            case fairness_metric.Conditional_Use_Acc_Equality.name:
+            case FairnessMetric.CONDITIONAL_USE_ACC_EQUALITY.name:
                 try:
-                    self.config.fairness_metric = fairness_metric.Predictive_Parity.name
+                    self.config.fairness_metric = FairnessMetric.PREDICTIVE_PARITY.name
                     pp_satisfying_lambdas = torch.stack(
                         [self._satisfies_lambda_pp(labels, lmbda) for lmbda in lambdas]
                     )
@@ -465,12 +463,14 @@ class ScoreSplitFairConformalClassifer(SplitFairConformalClassifier):
                         ]
                     )
                 finally:
-                    self.config.fairness_metric = fairness_metric.Equalized_Odds.name
+                    self.config.fairness_metric = (
+                        FairnessMetric.CONDITIONAL_USE_ACC_EQUALITY.name
+                    )
 
                 satisfying_lambdas = torch.sqrt(
                     pp_satisfying_lambdas * npp_satisfying_lambdas
                 )
-            case fairness_metric.Predictive_Parity.name:
+            case FairnessMetric.PREDICTIVE_PARITY.name:
                 satisfying_lambdas = torch.stack(
                     [self._satisfies_lambda_pp(labels, lmbda) for lmbda in lambdas]
                 )

@@ -1,53 +1,46 @@
-import dataclasses
-import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from re import L
 from typing import Dict, List, Optional, Union
 
 from .constants import (
     CLASSIFICATION_DATASETS,
     CORA,
     ConformalMethod,
-    conf_metric_names,
-    fairness_metric,
-    layer_types,
-    sample_type,
+    ConformalMetric,
+    FairnessMetric,
+    LayerType,
 )
 
 
-# helper for logging dataclasses as dict
-# see https://stackoverflow.com/a/51286749
-class EnhancedJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)
-        return super().default(o)
-
-
 @dataclass
-class BaseGNNConfig:
-    """Config for the base GNN model and its training."""
+class BaseModelConfig:
+    """Common configs for an ML model and training"""
 
     # Learning rate
     lr: float = field(default=0.01)
-    # Model layer type
-    model: str = field(default=layer_types.GCN.name)
-    # Number of hidden channels
-    hidden_channels: int = field(default=16)
-    # Number of heads for GAT
-    heads: int = field(default=1)
-    # Number of layers
+    # Number of nodes in the hidden layer
+    hidden_layer_size: int = field(default=256)
+    # Number of Hidden layers
     layers: int = field(default=2)
-    # Aggregation method
-    aggr: str = field(default="mean")
     # Dropout prob
     dropout: float = field(default=0.5)
+
+
+@dataclass
+class BaseGNNConfig(BaseModelConfig):
+    """Config for the base GNN model and its training."""
+
+    # Model layer type
+    model: str = field(default=LayerType.GCN.name)
+    # Number of heads for GAT
+    heads: int = field(default=1)
+    # Aggregation method
+    aggr: str = field(default="mean")
     # Fanout for neighbor sampling
     fanouts: List[int] = field(default_factory=list)
 
     def __post_init__(self):
-        ltypes = [lt.name for lt in layer_types]
+        ltypes = [lt.name for lt in LayerType]
         assert (
             self.model in ltypes
         ), f"Invalid model type {self.model}, must be in {ltypes}."
@@ -55,28 +48,14 @@ class BaseGNNConfig:
 
 
 @dataclass
-class BaseMLPConfig:
+class BaseMLPConfig(BaseModelConfig):
     """Config for the base MLP model and its training."""
 
-    # Learning rate
-    lr: float = field(default=0.01)
-    # Number of nodes in the hidden layer
-    d_hidden: int = field(default=256)
-    # Number of Hidden layers
-    layers: int = field(default=2)
-    # Dropout prob
-    dropout: float = field(default=0.5)
-
-    # def __post_init__(self):
-    #     ltypes = [lt.name for lt in layer_types]
-    #     assert (
-    #         self.model in ltypes
-    #     ), f"Invalid model type {self.model}, must be in {ltypes}."
-    #     # assert self.aggr in ['mean', 'add', 'max'], f"Invalid aggregation method {self.aggr}."
+    pass
 
 
 @dataclass
-class BaseXGBoostConfig:
+class BaseXGBoostConfig(BaseModelConfig):
     """Config for the base XGB model and its training."""
 
     # Number of estimators for xgboost
@@ -85,8 +64,6 @@ class BaseXGBoostConfig:
     max_depth: int = field(default=10)
     # Max Leaves - 0 = no limit
     max_leaves: int = field(default=0)
-    # Number of bins
-    lr: float = field(default=0.1)
     # grow policy for the tree
     grow_policy: str = field(default="depthwise")  # or 'lossguide'
     # booster for the training
@@ -101,13 +78,6 @@ class BaseXGBoostConfig:
     colsample_bynode: float = field(default=1.0)  # 0.0 to 1.0
     # Sub Sample of features to use:
     subsample: float = field(default=1.0)
-
-    # def __post_init__(self):
-    #     ltypes = [lt.name for lt in layer_types]
-    #     assert (
-    #         self.model in ltypes
-    #     ), f"Invalid model type {self.model}, must be in {ltypes}."
-    #     # assert self.aggr in ['mean', 'add', 'max'], f"Invalid aggregation method {self.aggr}."
 
 
 @dataclass
@@ -171,14 +141,10 @@ class SharedBaseConfig:
     seed: int = field(default=0)
     # dataset name
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
-    # dataset loading style
-    dataset_loading_style: str = field(default=sample_type.split.name)
     # split fractions (train/valid/calib)
     dataset_split_fractions: Optional[DatasetSplitConfig] = field(
         default_factory=DatasetSplitConfig
     )
-    # samples per class
-    dataset_n_samples_per_class: Optional[int] = field(default=None)
     # output directory for results
     output_dir: str = field(default="./outputs")
     # dataset directory for dgl datasets
@@ -210,10 +176,6 @@ class BaseExptConfig(SharedBaseConfig):
     )
 
     def __post_init__(self):
-        sample_types = [st.name for st in sample_type]
-        assert (
-            self.dataset_loading_style in sample_types
-        ), f"Invalid dataset loading style {self.dataset_loading_style}, must be in {sample_types}."
         assert (
             self.dataset.name in CLASSIFICATION_DATASETS
         ), f"Invalid dataset {self.dataset.name}, must be in {CLASSIFICATION_DATASETS}."
@@ -331,7 +293,7 @@ class ConfExptConfig(SharedBaseConfig):
     conformal_method: str = field(default="tps")
     # List of conformal metrics to compute
     conformal_metrics: List[str] = field(
-        default_factory=lambda: [cm.name for cm in conf_metric_names]
+        default_factory=lambda: [cm.name for cm in ConformalMetric]
     )
     # feature for feature stratified coverage
     conformal_feature_idx: Optional[int] = field(default=None)
@@ -357,7 +319,7 @@ class ConfExptConfig(SharedBaseConfig):
     )
 
     def __post_init__(self):
-        conf_metrics = [cm.name for cm in conf_metric_names]
+        conf_metrics = [cm.name for cm in ConformalMetric]
         assert self.conformal_metrics is None or all(
             [cm in conf_metrics for cm in self.conformal_metrics]
         ), f"Invalid conformal metrics {self.conformal_metrics}."
@@ -411,7 +373,7 @@ class ConfExptConfig(SharedBaseConfig):
 
 @dataclass
 class ConfFairExptConfig(ConfExptConfig, MultiSplitTuneFractionConfig):
-    fairness_metric: str = field(default=fairness_metric.Equal_Opportunity.name)
+    fairness_metric: str = field(default=FairnessMetric.EQUAL_OPPORTUNITY.name)
     closeness_measure: float = 0.1
     use_classwise_lambdas: bool = True
 

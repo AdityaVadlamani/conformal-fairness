@@ -5,11 +5,10 @@ from typing import List
 import pandas as pd
 import torch
 
-from .conf_metrics import compute_metric
-from .config import DiffusionConfig, RegularizedConfig
-from .constants import DEFAULT_DEVICE, Stage, conf_metric_names
-from .data_module import DataModule
-from .data_utils import get_label_scores
+from ..config import DiffusionConfig, RegularizedConfig
+from ..constants import DEFAULT_DEVICE, ConformalMetric, Stage
+from ..data import BaseDataModule
+from ..utils import compute_metric, get_label_scores
 from .scores import APSScore, CPScore, TPSScore
 
 
@@ -39,18 +38,16 @@ class PredSetTransformation(Transformation):
         return pred_sets
 
 
-# TODO Create a Quantile Transform and Remove Compute Quantile From all Score Modules
-RAPS_K = "k_reg"
-RAPS_LAMBDA = "lambda"
-
-
 class RegularizationTransformation(Transformation):
+    RAPS_K = "k_reg"
+    RAPS_LAMBDA = "lambda"
+
     def __init__(self, config: RegularizedConfig, **kwargs):
         super().__init__(**kwargs)
         self.config = config
 
     def find_params(
-        self, probs, labels, score_module: APSScore, datamodule: DataModule
+        self, probs, labels, score_module: APSScore, datamodule: BaseDataModule
     ):
         gen = torch.Generator()
         gen.manual_seed(datamodule.seed)
@@ -60,7 +57,7 @@ class RegularizationTransformation(Transformation):
         # use only the first half of the calibration set for tuning
         tune_calib_nodes, test_calib_nodes = calib_tune_nodes.split(math.ceil(N / 2))
 
-        eff_str = conf_metric_names.efficiency.name
+        eff_str = ConformalMetric.EFFICIENCY.name
 
         overall_results = []
 
@@ -85,7 +82,7 @@ class RegularizationTransformation(Transformation):
                 tune_raps_adjust = self.config.raps_mod
 
                 tune_scores = base_scores[tune_calib_nodes]
-                params_kws = {RAPS_K: k_reg, RAPS_LAMBDA: lambda_fac}
+                params_kws = {self.self.RAPS_K: k_reg, self.RAPS_LAMBDA: lambda_fac}
                 tune_scores = self.transform(
                     tune_scores,
                     probs[tune_calib_nodes],
@@ -115,7 +112,11 @@ class RegularizationTransformation(Transformation):
                 )
                 eff = compute_metric(eff_str, prediction_sets, labels[test_calib_nodes])
                 iteration_results.append(
-                    {RAPS_K: k_reg.item(), RAPS_LAMBDA: lambda_fac, eff_str: eff.item()}
+                    {
+                        self.self.RAPS_K: k_reg.item(),
+                        self.RAPS_LAMBDA: lambda_fac,
+                        eff_str: eff.item(),
+                    }
                 )
 
             overall_results.extend(iteration_results)
@@ -128,13 +129,15 @@ class RegularizationTransformation(Transformation):
 
         overall_results = pd.DataFrame(overall_results)
         best_k, best_lambda = (
-            overall_results.groupby([RAPS_K, RAPS_LAMBDA]).mean()[eff_str].idxmin()
+            overall_results.groupby([self.RAPS_K, self.RAPS_LAMBDA])
+            .mean()[eff_str]
+            .idxmin()
         )
-        return {RAPS_K: best_k, RAPS_LAMBDA: best_lambda}
+        return {self.RAPS_K: best_k, self.RAPS_LAMBDA: best_lambda}
 
     def transform(self, x, probs, raps_modified=False, **kwargs):
-        k_reg = kwargs.get(RAPS_K, 3.0)
-        lambda_fac = kwargs.get(RAPS_LAMBDA, 0.1)
+        k_reg = kwargs.get(self.RAPS_K, 3.0)
+        lambda_fac = kwargs.get(self.RAPS_LAMBDA, 0.1)
 
         # x are APSScores
         ranks = torch.argsort(torch.argsort(probs, dim=1, descending=True), dim=1)
@@ -155,7 +158,9 @@ class DiffusionTransformation(Transformation):
         super().__init__(**kwargs)
         self.config = config
 
-    def find_params(self, probs, labels, score_module: CPScore, datamodule: DataModule):
+    def find_params(
+        self, probs, labels, score_module: CPScore, datamodule: BaseDataModule
+    ):
         gen = torch.Generator()
         gen.manual_seed(datamodule.seed)
 
@@ -185,7 +190,7 @@ class DiffusionTransformation(Transformation):
                     kwargs = {}
 
                 qhat = score_module.compute_quantile(label_scores, **kwargs)
-                eff_str = conf_metric_names.efficiency.name
+                eff_str = ConformalMetric.EFFICIENCY.name
 
                 test_calib_scores = scores[test_calib_nodes]
                 prediction_sets = PredSetTransformation(threshold=qhat).pipe_transform(

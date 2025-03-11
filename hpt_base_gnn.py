@@ -8,15 +8,14 @@ import numpy as np
 import pyrallis.argparsing as pyr_a
 import ray.train
 from conformal_fairness.config import BaseExptConfig, DatasetSplitConfig
-from conformal_fairness.constants import layer_types, sample_type
+from conformal_fairness.constants import LayerType, sample_type
 from conformal_fairness.custom_logger import CustomLogger
+from hpt_config import BaseTuneExptConfig
 from ray import tune
 from ray.train import CheckpointConfig, RunConfig, ScalingConfig
 from ray.train.lightning import RayDDPStrategy, RayLightningEnvironment, prepare_trainer
 from ray.train.torch import TorchTrainer
 from ray.tune.schedulers import ASHAScheduler
-
-from hpt_config import BaseTuneExptConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -184,15 +183,15 @@ def main():
 
         search_space = {
             f"{BASE_PREFIX}lr": tune.loguniform(1e-4, 1e-1),
-            f"{BASE_PREFIX}hidden_channels": tune.choice([16, 32, 64, 128]),
+            f"{BASE_PREFIX}hidden_layer_size": tune.choice([16, 32, 64, 128]),
             f"{BASE_PREFIX}layers": tune.choice([1, 2, 4]),
             f"{BASE_PREFIX}dropout": tune.uniform(0.1, 0.8),
         }
 
         match l_type:
-            case layer_types.GAT.name:
+            case LayerType.GAT.name:
                 search_space[f"{BASE_PREFIX}heads"] = tune.choice([2, 4, 8])
-            case layer_types.GraphSAGE.name:
+            case LayerType.GRAPHSAGE.name:
                 search_space[f"{BASE_PREFIX}aggr"] = tune.choice(
                     ["mean", "gcn", "pool", "lstm"]
                 )
