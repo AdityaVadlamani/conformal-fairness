@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 OUTPUT_DIR = "../configs/custom_configs/best_base_configs"
 DATASETS = ["Pokec_n", "Pokec_z"]
-SPLIT_STYLES = ["split"]
 SPLIT_FRACS = [(0.2, 0.1), (0.2, 0.2), (0.3, 0.1), (0.3, 0.2)]  # train, val
 SENS_ATTRS = ["region"]
 
@@ -46,7 +45,6 @@ def get_split_results_df(dataset, train_split, valid_split, runs_path):
         "config.logging_config.wandb_config.group": "base",
         "config.dataset.name": dataset,
         "config.dataset.sens_attrs": SENS_ATTRS,
-        "config.dataset_loading_style": "split",
         "config.dataset_split_fractions.train": train_split,
         "config.dataset_split_fractions.valid": valid_split,
         # "config.logging_config.wandb_config.run_name": {"$regex": "[a-z]*-[a-z]*-[0-9]*"}

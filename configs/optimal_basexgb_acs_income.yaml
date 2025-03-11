@@ -1,4 +1,4 @@
-base_gnn:
+base_model_config:
   booster: gbtree
   colsample_bylevel: 0.983963756674573
   colsample_bynode: 0.8493689231625428
@@ -19,9 +19,8 @@ dataset:
   pred_attrs: []
   sens_attrs: []
   small_class: false
-dataset_dir: /users/PAS2030/$USER/conformal-fairness/datasets
-dataset_loading_style: split
-dataset_n_samples_per_class: null
+dataset_dir: /users/PAS2065/adityatv/conformal-fairness/datasets
+
 dataset_split_fractions:
   calib: 0.35
   train: 0.3

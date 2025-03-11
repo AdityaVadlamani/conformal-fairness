@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PROJECTDIR="$HOME/conformal-fairness"
-CONDAENV=conformal_fairness
+CONDAENV=conformal-fairness
 TRAIN_FRAC=0.3
 VAL_FRAC=0.2
 ALPHA=0.1
@@ -55,7 +55,6 @@ python run_conformal_fairness.py --config_path=${config_path} \
     --conformal_method=${METHOD} \
     --job_id=c_${DATASET}_${TRAIN_FRAC}_${VAL_FRAC}_${METHOD}_${USE_CLASSWISE}_${INVERT_PRIM} \
     --use_classwise_lambdas ${USE_CLASSWISE} \
-    --dataset_loading_style split \
     --dataset_split_fractions.train ${TRAIN_FRAC} \
     --dataset_split_fractions.valid ${VAL_FRAC}  \
     --alpha $ALPHA \

@@ -3,25 +3,24 @@ from contextlib import ExitStack
 from itertools import product
 from typing import Any, Dict
 
-import conformal_fairness.utils as utils
+from conformal_fairness import utils
 import numpy as np
 import pyrallis.argparsing as pyr_a
 import ray.train
 from conformal_fairness.config import BaseExptConfig, DatasetSplitConfig
-from conformal_fairness.constants import layer_types, sample_type
+from conformal_fairness.constants import LayerType
 from conformal_fairness.custom_logger import CustomLogger
+from hpt_config import BaseTuneExptConfig
 from ray import tune
 from ray.train import CheckpointConfig, RunConfig, ScalingConfig
 from ray.train.lightning import RayDDPStrategy, RayLightningEnvironment, prepare_trainer
 from ray.train.torch import TorchTrainer
 from ray.tune.schedulers import ASHAScheduler
 
-from hpt_config import BaseTuneExptConfig
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-BASE_PREFIX = "base_gnn."
+BASE_PREFIX = "base_model_config."
 CUSTOM_STEP = "custom_step"
 RESULTS_TABLE = "basegnn_tune_table"
 TRIAL_PREFIX = "TRIAL_"
@@ -41,15 +40,8 @@ def create_tune_jobid_from_config(config: BaseExptConfig) -> str:
     """Create a job name from the config for easy w&b grouping.
     Since we launch n_trials_per_config for each config, we will use the fixed part of the config to generate a job name.
     """
-    loading_style = config.dataset_loading_style
-    match loading_style:
-        case sample_type.split.name:
-            split_fractions = config.dataset_split_fractions
-            return f"{config.dataset.name}_{config.base_gnn.model}_{loading_style}_{split_fractions.train}_{split_fractions.valid}_{'_'.join(config.dataset.sens_attrs)}"  # type: ignore
-        case sample_type.n_samples_per_class.name:
-            return f"{config.dataset.name}_{config.base_gnn.model}_{loading_style}_{config.dataset_n_samples_per_class}_{'_'.join(config.dataset.sens_attrs)}"  # type: ignore
-        case _:
-            raise ValueError("Unsupported loading style")
+    split_fractions = config.dataset_split_fractions
+    return f"{config.dataset.name}_{config.base_model_config.model}_{split_fractions.train}_{split_fractions.valid}_{'_'.join(config.dataset.sens_attrs)}"  # type: ignore
 
 
 def get_aggr_func(aggr: str):
@@ -74,7 +66,7 @@ def update_params(base_config: BaseExptConfig, new_config: Dict[str, Any]):
             expt_params[k] = v
 
     utils.update_dataclass_from_dict(base_config, expt_params)
-    utils.update_dataclass_from_dict(base_config.base_gnn, base_params)
+    utils.update_dataclass_from_dict(base_config.base_model_config, base_params)
 
 
 def set_run_name(config: BaseExptConfig, trial_name: str):
@@ -99,7 +91,7 @@ def train_func(base_tune_config: BaseTuneExptConfig, new_config: Dict[str, Any])
         expt_logger = CustomLogger(base_config.logging_config)
 
         datamodule = utils.prepare_datamodule(base_config)
-        datamodule.setup_sampler(base_config.base_gnn.layers)
+        datamodule.setup_sampler(base_config.base_model_config.layers)
 
         model = utils.setup_base_model(base_config, datamodule)
 
@@ -151,13 +143,9 @@ def main():
     # ensure dataset download before launching
     utils.prepare_datamodule(args.expt_config)
 
-    match t_config.s_type:
-        case sample_type.split.name:
-            expt_loop_space = list(
-                product(args.l_types, t_config.train_fracs, t_config.val_fracs)
-            )
-        case sample_type.n_samples_per_class.name:
-            expt_loop_space = list(product(args.l_types, t_config.samples_per_class))
+    expt_loop_space = list(
+        product(args.l_types, t_config.train_fracs, t_config.val_fracs)
+    )
 
     # we will intialize the config partially and pass into the tune function
     # all experiments run in this script are generated from this
@@ -168,31 +156,24 @@ def main():
     for split_config in expt_loop_space:
         l_type = split_config[0]
 
-        expt_config.base_gnn.model = l_type
-        expt_config.dataset_loading_style = t_config.s_type
+        expt_config.base_model_config.model = l_type
 
-        match t_config.s_type:
-            case sample_type.split.name:
-                assert len(split_config) == 3
-                expt_config.dataset_split_fractions = DatasetSplitConfig()
-                expt_config.dataset_split_fractions.train = split_config[1]
-                expt_config.dataset_split_fractions.valid = split_config[2]
-
-            case sample_type.n_samples_per_class.name:
-                assert len(split_config) == 2
-                expt_config.dataset_n_samples_per_class = split_config[1]
+        assert len(split_config) == 3
+        expt_config.dataset_split_fractions = DatasetSplitConfig()
+        expt_config.dataset_split_fractions.train = split_config[1]
+        expt_config.dataset_split_fractions.valid = split_config[2]
 
         search_space = {
             f"{BASE_PREFIX}lr": tune.loguniform(1e-4, 1e-1),
-            f"{BASE_PREFIX}hidden_channels": tune.choice([16, 32, 64, 128]),
+            f"{BASE_PREFIX}hidden_layer_size": tune.choice([16, 32, 64, 128]),
             f"{BASE_PREFIX}layers": tune.choice([1, 2, 4]),
             f"{BASE_PREFIX}dropout": tune.uniform(0.1, 0.8),
         }
 
         match l_type:
-            case layer_types.GAT.name:
+            case LayerType.GAT.value:
                 search_space[f"{BASE_PREFIX}heads"] = tune.choice([2, 4, 8])
-            case layer_types.GraphSAGE.name:
+            case LayerType.GRAPHSAGE.value:
                 search_space[f"{BASE_PREFIX}aggr"] = tune.choice(
                     ["mean", "gcn", "pool", "lstm"]
                 )
@@ -272,5 +253,5 @@ def main():
 
 
 if __name__ == "__main__":
-    # python hpt_base_gnn.py  --config_path="configs/hpt_base_gnn_default.yaml"
+    # python hpt_base_model_config.py  --config_path="configs/hpt_base_gnn_default.yaml"
     main()

@@ -14,13 +14,13 @@ sbatch <<EOT
 #SBATCH --cpus-per-task=28
 #SBATCH --mem=32G
 #SBATCH --time=1-00:00:00
-#SBATCH -J tune_acseducation
+#SBATCH -J tune_acsincome
 #SBATCH -o ${SCRIPTDIR}/scripts/logs9/train_${CONFIGFILENAME}.out
 #SBATCH -e ${SCRIPTDIR}/scripts/logs9/train_${CONFIGFILENAME}.err
 
 source ~/.bashrc
 conda deactivate
-conda activate conformal_fairness
+conda activate fairgraph
 
 export DGLBACKEND=pytorch
 

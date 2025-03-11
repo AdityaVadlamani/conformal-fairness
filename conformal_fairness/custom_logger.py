@@ -1,3 +1,4 @@
+import dataclasses
 import enum
 import json
 import logging
@@ -9,7 +10,16 @@ from lightning.pytorch.loggers.logger import Logger
 from lightning.pytorch.loggers.wandb import WandbLogger
 from lightning_utilities.core.rank_zero import rank_zero_only
 
-from .config import EnhancedJSONEncoder, LoggingConfig
+from .config import LoggingConfig
+
+
+# helper for logging dataclasses as dict
+# see https://stackoverflow.com/a/51286749
+class EnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        return super().default(o)
 
 
 class LoggerType(enum.Enum):
@@ -17,20 +27,23 @@ class LoggerType(enum.Enum):
     TENSORBOARD = "tensorboard"
     TERMINAL = "terminal"
 
+
 class TerminalLogger:
     def __init__(self, name) -> None:
         self.logger = logging.getLogger(name)
         self.logger.setLevel(logging.INFO)
-    
+
     def log_hyperparams(self, params):
-        self.logger.info(f"Hyperparams: {json.dumps(params, cls=EnhancedJSONEncoder, indent=2)}")
-    
+        self.logger.info(
+            f"Hyperparams: {json.dumps(params, cls=EnhancedJSONEncoder, indent=2)}"
+        )
+
     def log_metrics(self, metrics, step):
         self.logger.info(f"Step: {step} Metrics: {json.dumps(metrics, indent=2)}")
 
     def finalize(self, status):
         self.logger.info(f"Experiment finished with status: {status}")
-    
+
     def save(self):
         pass
 
@@ -73,9 +86,9 @@ class CustomLogger(Logger):
 
             if config.use_tensorboard:
                 raise NotImplementedError
-            
+
             if config.use_terminal:
-                self.terminal_logger = TerminalLogger(self.name) 
+                self.terminal_logger = TerminalLogger(self.name)
                 self.loggers_used[LoggerType.TERMINAL] = self.terminal_logger
 
     @property

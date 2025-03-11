@@ -1,6 +1,6 @@
 seed: 0
 
-base_gnn:
+base_model_config:
   booster: gbtree
   colsample_bylevel: 0.8410727103550356
   colsample_bynode: 0.8835155250622978
@@ -24,9 +24,8 @@ dataset:
   sens_attrs:
     - Age
   small_class: false
-dataset_dir: /users/$USER/conformal-fairness/datasets
-dataset_loading_style: split
-dataset_n_samples_per_class: null
+dataset_dir: /users/adityatv/conformal-fairness/datasets
+
 dataset_split_fractions:
   calib: 0.1
   train: 0.3
