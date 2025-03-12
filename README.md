@@ -1,5 +1,10 @@
 # conformal-fairness
 
+Code and data for the ICLR 2025 paper "A Generic Framework for Conformal Fairness". This branch contains everything to reproduce the results in the paper and **will not** be updated further beyond README changes.
+
+NOTE: Any updates to the conformal-fairness codebase (e.g., refactoring or new features) will be reflected in the main branch or other specific branches.
+
+
 ## Environment export from conda
 
 ```bash
@@ -14,10 +19,10 @@ conda env export | grep -v "name" | grep -v "prefix" > environment.yml
 
 - `scripts` contains SLURM batch scripts used to run the experiments
 
-- `analysis` contains noteboks for generating figures and scripts to pull from W&B
+- `analysis` contains notebooks for generating figures and scripts to pull from W&B
 
 - `configs` contains configs for the different experiments
 
 - `BatchGCP` contains the code used for the BatchGCP experiments
 
-Remaining python files are used to run hyperparameter tuning and conformal prediction.
+The remaining Python files are used to run hyperparameter tuning and conformal prediction.
