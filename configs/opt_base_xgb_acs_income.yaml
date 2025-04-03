@@ -36,6 +36,6 @@ dataset_split_fractions:
   train: 0.3
   valid: 0.2
 output_dir: "./outputs"
-dataset_dir: "/users/PAS2065/adityatv/conformal-fairness/datasets"
+dataset_dir: "/users/$USER/conformal-fairness/datasets"
 job_id: "hpt_ACSIncome_xgb"
 resume_from_checkpoint: False

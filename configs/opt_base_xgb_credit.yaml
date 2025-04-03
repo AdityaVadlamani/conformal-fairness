@@ -24,7 +24,7 @@ dataset:
   sens_attrs:
     - Age
   small_class: false
-dataset_dir: /users/adityatv/conformal-fairness/datasets
+dataset_dir: /users/$USER/conformal-fairness/datasets
 
 dataset_split_fractions:
   calib: 0.1
