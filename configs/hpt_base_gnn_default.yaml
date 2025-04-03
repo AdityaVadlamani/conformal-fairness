@@ -9,7 +9,7 @@ expt_config:
       group: "base"
       job_type: "tune"
 
-  dataset_dir: "/users/adityatv/conformal-fairness/datasets"
+  dataset_dir: "/users/$USER/conformal-fairness/datasets"
   resource_config:
     gpus: 1
     cpus: 27

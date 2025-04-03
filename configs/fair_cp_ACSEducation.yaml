@@ -7,7 +7,7 @@ dataset_split_fractions:
   train: 0.3
   valid: 0.2
 output_dir: "./outputs"
-dataset_dir: "/users/PAS2065/adityatv/conformal-fairness/datasets"
+dataset_dir: "/users/$USER/conformal-fairness/datasets"
 num_workers: 1
 job_id: "fair_basexgb_ACSEducation"
 

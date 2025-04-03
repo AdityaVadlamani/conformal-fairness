@@ -19,7 +19,7 @@ dataset:
   pred_attrs: []
   sens_attrs: []
   small_class: false
-dataset_dir: /users/PAS2065/adityatv/conformal-fairness/datasets
+dataset_dir: /users/$USER/conformal-fairness/datasets
 
 dataset_split_fractions:
   calib: 0.35

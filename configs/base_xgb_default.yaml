@@ -32,6 +32,6 @@ dataset_split_fractions:
   valid: 0.1
   calib: 0.1
 output_dir: "./outputs"
-dataset_dir: "/users/adityatv/conformal-fairness/datasets"
+dataset_dir: "/users/$USER/conformal-fairness/datasets"
 job_id: "hpt_basexgb_Credit"
 resume_from_checkpoint: False

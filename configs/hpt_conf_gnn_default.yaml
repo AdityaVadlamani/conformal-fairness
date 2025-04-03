@@ -2,7 +2,7 @@ calib_test_equal: True
 conf_expt_config:
   seed: 0
   batch_size: 64
-  dataset_dir: "/users/adityatv/conformal-fairness/datasets"
+  dataset_dir: "/users/$USER/conformal-fairness/datasets"
   num_workers: 25
   epochs: 10
   alpha: 0.1
