@@ -84,7 +84,7 @@ def _get_ckpt_dir_fname(output_dir, dataset, job_id, ckpt_prefix) -> Tuple[str, 
 
 
 def get_base_ckpt_dir_fname(output_dir, dataset, job_id) -> Tuple[str, str]:
-    return _get_ckpt_dir_fname(output_dir, dataset, job_id, BASEGNN_CKPT_PREFIX)
+    return _get_ckpt_dir_fname(output_dir, dataset, job_id, BASE_MODEL_CKPT_PREFIX)
 
 
 def set_conf_ckpt_dir_fname(
@@ -102,18 +102,18 @@ def set_conf_ckpt_dir_fname(
     return args.confgnn_config.ckpt_dir, args.confgnn_config.ckpt_filename
 
 
-def output_basegnn_config(output_dir: str, args: BaseExptConfig):
+def output_base_model_config(output_dir: str, args: BaseExptConfig):
     os.makedirs(output_dir, exist_ok=True)
-    with open(os.path.join(output_dir, BASEGNN_CKPT_CONFIG_FILE), "w") as f:
+    with open(os.path.join(output_dir, BASE_MODEL_CKPT_CONFIG_FILE), "w") as f:
         pyr_c.dump(args, f)
 
 
-def load_basegnn_config_from_ckpt(
+def load_base_config_from_ckpt(
     ckpt_dir: str, default_args: Optional[BaseExptConfig] = None
 ) -> BaseExptConfig:
     """Default args used if yaml not found"""
-    yaml_path = os.path.join(ckpt_dir, BASEGNN_CKPT_CONFIG_FILE)
-    logging.info(f"Attempting basegnn config load from {yaml_path}")
+    yaml_path = os.path.join(ckpt_dir, BASE_MODEL_CKPT_CONFIG_FILE)
+    logging.info(f"Attempting base model config load from {yaml_path}")
     if os.path.exists(yaml_path):
         if default_args is not None:
             logging.warning(
@@ -130,10 +130,10 @@ def load_basegnn_config_from_ckpt(
 
 
 def _base_ckpt_path(job_output_dir: str):
-    return glob.glob(os.path.join(job_output_dir, f"{BASEGNN_CKPT_PREFIX}*.ckpt"))
+    return glob.glob(os.path.join(job_output_dir, f"{BASE_MODEL_CKPT_PREFIX}*.ckpt"))
 
 
-def set_trained_basegnn_path(args: ConfExptConfig, ckpt_dir: Optional[str] = None):
+def set_trained_base_model_path(args: ConfExptConfig, ckpt_dir: Optional[str] = None):
     if ckpt_dir is not None:
         args.confgnn_config.base_model_path = _base_ckpt_path(ckpt_dir)[0]
     elif not args.confgnn_config.base_model_path:
@@ -145,7 +145,7 @@ def set_trained_basegnn_path(args: ConfExptConfig, ckpt_dir: Optional[str] = Non
     return args.confgnn_config.base_model_path
 
 
-def load_basegnn(ckpt_dir: str, args: BaseExptConfig, datamodule) -> BaseModel:
+def load_base_model(ckpt_dir: str, args: BaseExptConfig, datamodule) -> BaseModel:
     base_ckpt_path = _base_ckpt_path(ckpt_dir)
     if args.resume_from_checkpoint:
         if (
@@ -258,7 +258,7 @@ def setup_trainer(
     return trainer
 
 
-def output_basegnn_results(args: BaseExptConfig, results: Dict[str, torch.Tensor]):
+def output_base_model_results(args: BaseExptConfig, results: Dict[str, torch.Tensor]):
     assert NODE_IDS_KEY in results
     # assert that results[NODE_IDS_KEY] is sorted
     assert torch.all(
@@ -273,7 +273,7 @@ def output_basegnn_results(args: BaseExptConfig, results: Dict[str, torch.Tensor
     torch.save(results, os.path.join(job_output_dir, ALL_OUTPUTS_FILE))
 
 
-def run_basegnn_inference_alldl(model: GNN, trainer: L.Trainer, ckpt_path, datamodule):
+def run_inference_alldl(model: GNN, trainer: L.Trainer, ckpt_path, datamodule):
     with ExitStack() as stack:
         dl = enter_cpu_cxs(datamodule, ["all_dataloader"], stack)
         trainer.test(model, dataloaders=dl, ckpt_path=ckpt_path, verbose=False)
@@ -298,7 +298,7 @@ def run_basegnn_inference_alldl(model: GNN, trainer: L.Trainer, ckpt_path, datam
         return updated_test_results
 
 
-def run_basexgb_inference_alldl(model: XGBClassifier, datamodule):
+def run_xgb_inference_alldl(model: XGBClassifier, datamodule):
     # return model.latest_test_results
     num_points = datamodule.num_points
     # num_classes = datamodule.num_classes
@@ -345,7 +345,7 @@ def check_sampling_consistent(
     ), "Dataset split fractions must be consistent"
 
 
-def load_basegnn_outputs(args: ConfExptConfig, job_output_dir: Optional[str] = None):
+def load_base_model_outputs(args: ConfExptConfig, job_output_dir: Optional[str] = None):
     if not job_output_dir:
         job_output_dir = _get_output_directory(
             args.output_dir, args.dataset.name, args.base_job_id

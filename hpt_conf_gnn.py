@@ -91,7 +91,7 @@ def train_func(cfgnn_tune_config: ConfGNNTuneExptConfig, new_config: Dict[str, A
     for idx in range(cfgnn_tune_config.n_trials_per_config):
         # make sure that the sampling config for the expt is same as that of the base job
         base_ckpt_dir = cfgnn_tune_config.base_model_dir
-        base_expt_config = utils.load_basegnn_config_from_ckpt(base_ckpt_dir)
+        base_expt_config = utils.load_base_config_from_ckpt(base_ckpt_dir)
 
         cfgnn_tune_config.conf_expt_config.base_job_id = base_expt_config.job_id
 
@@ -114,7 +114,7 @@ def train_func(cfgnn_tune_config: ConfGNNTuneExptConfig, new_config: Dict[str, A
         datamodule = utils.prepare_datamodule(conf_config)
 
         # Load probs from base
-        probs, _ = utils.load_basegnn_outputs(conf_config, base_ckpt_dir)
+        probs, _ = utils.load_base_model_outputs(conf_config, base_ckpt_dir)
         assert (
             probs.shape[1] == datamodule.num_classes
         ), f"Loaded probs has {probs.shape[1]} classes, but the dataset has {datamodule.num_classes} classes"
@@ -124,7 +124,7 @@ def train_func(cfgnn_tune_config: ConfGNNTuneExptConfig, new_config: Dict[str, A
         ), f"confgnn_config cannot be None for CFGNN"
 
         if datamodule.name != CREDIT:
-            _ = utils.set_trained_basegnn_path(
+            _ = utils.set_trained_base_model_path(
                 conf_config, cfgnn_tune_config.base_model_dir
             )
         _, _ = utils.set_conf_ckpt_dir_fname(conf_config, ConformalMethod.CFGNN.value)

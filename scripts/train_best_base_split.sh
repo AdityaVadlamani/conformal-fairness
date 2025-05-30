@@ -9,7 +9,7 @@ sens_attr_prefix="_region" #"_gender" ""
 for DATASET in "Pokec_n" "Pokec_z"; do
     for train_frac in 0.2 0.3; do
         for val_frac in 0.1 0.2; do
-            best_param_path="${best_run_dir}/${DATASET}/split/${train_frac}_${val_frac}${sens_attr_prefix}/basegnn_config.yaml"
+            best_param_path="${best_run_dir}/${DATASET}/split/${train_frac}_${val_frac}${sens_attr_prefix}/base_model_config.yaml"
             if [ ! -f $best_param_path ]; then
                 echo "Best parameter file not found for ${DATASET} with train_frac=${train_frac} and val_frac=${val_frac}"
                 continue

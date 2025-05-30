@@ -33,10 +33,10 @@ def main():
             shutil.rmtree(ckpt_dir)
     else:
         logger.warning("Resuming from checkpoint")
-        args = utils.load_basegnn_config_from_ckpt(ckpt_dir, args)
+        args = utils.load_base_config_from_ckpt(ckpt_dir, args)
 
     # overwrite any existing config
-    utils.output_basegnn_config(ckpt_dir, args)
+    utils.output_base_model_config(ckpt_dir, args)
 
     utils.set_seed_and_precision(args.seed)
     datamodule = utils.prepare_datamodule(args)
@@ -46,7 +46,7 @@ def main():
     expt_logger = CustomLogger(args.logging_config)
     expt_logger.log_hyperparams(vars(args))
 
-    model = utils.load_basegnn(ckpt_dir, args, datamodule)
+    model = utils.load_base_model(ckpt_dir, args, datamodule)
 
     best_callback = ModelCheckpoint(
         dirpath=ckpt_dir,
@@ -74,11 +74,11 @@ def main():
         )
 
     # run on all to get scores to use with alternative splits
-    results = utils.run_basegnn_inference_alldl(
+    results = utils.run_inference_alldl(
         model, trainer, best_callback.best_model_path, datamodule
     )
     if results is not None:
-        utils.output_basegnn_results(args, results)
+        utils.output_base_model_results(args, results)
     else:
         logger.error("No results to output")
         raise ValueError("No results to output")

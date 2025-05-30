@@ -129,8 +129,8 @@ PROBS_KEY = "probs"
 SCORES_KEY = "scores"
 LABELS_KEY = "labels"
 
-BASEGNN_CKPT_CONFIG_FILE = "basegnn_config.yaml"
-BASEGNN_CKPT_PREFIX = "basegnn"
+BASE_MODEL_CKPT_CONFIG_FILE = "base_model_config.yaml"
+BASE_MODEL_CKPT_PREFIX = "base_model"
 
 
 class ConformalMetric(str, Enum):

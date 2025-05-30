@@ -6,6 +6,8 @@ import wandb
 import yaml
 from tqdm import tqdm
 
+from ..conformal_fairness.constants import BASE_MODEL_CKPT_CONFIG_FILE
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -72,7 +74,7 @@ def output_best_config_for_split(dataset, train_split, valid_split, config_outpu
         f"{train_split}_{valid_split}_{'_'.join(SENS_ATTRS)}",
     )
     os.makedirs(split_dir, exist_ok=True)
-    split_path = os.path.join(split_dir, "basegnn_config.yaml")
+    split_path = os.path.join(split_dir, BASE_MODEL_CKPT_CONFIG_FILE)
     # reset the seed to 0
     best_config["seed"] = 0
     with open(split_path, "w") as f:

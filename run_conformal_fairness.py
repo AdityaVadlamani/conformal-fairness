@@ -19,7 +19,7 @@ def main() -> None:
     base_ckpt_dir, _ = utils.get_base_ckpt_dir_fname(
         args.output_dir, args.dataset.name, args.base_job_id
     )
-    base_expt_config = utils.load_basegnn_config_from_ckpt(base_ckpt_dir)
+    base_expt_config = utils.load_base_config_from_ckpt(base_ckpt_dir)
     utils.check_sampling_consistent(base_expt_config, args)
 
     if args.calib_test_equal:

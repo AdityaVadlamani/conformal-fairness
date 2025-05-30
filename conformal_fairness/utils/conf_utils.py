@@ -14,9 +14,9 @@ from ..constants import *
 from ..custom_logger import CustomLogger
 from ..data import BaseDataModule
 from .ml_utils import (
-    load_basegnn_outputs,
+    load_base_model_outputs,
     set_conf_ckpt_dir_fname,
-    set_trained_basegnn_path,
+    set_trained_base_model_path,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -129,7 +129,7 @@ def run_conformal(
     base_ckpt_dir: Optional[str] = None,
 ):
     # Load probs/labels from base
-    probs, labels = load_basegnn_outputs(args, base_ckpt_dir)
+    probs, labels = load_base_model_outputs(args, base_ckpt_dir)
     assert (
         probs.shape[1] == datamodule.num_classes
     ), f"Loaded probs has {probs.shape[1]} classes, but the dataset has {datamodule.num_classes} classes"
@@ -161,7 +161,7 @@ def run_conformal(
             assert (
                 args.confgnn_config is not None
             ), f"confgnn_config cannot be None for CFGNN"
-            _ = set_trained_basegnn_path(args, base_ckpt_dir)
+            _ = set_trained_base_model_path(args, base_ckpt_dir)
             _, _ = set_conf_ckpt_dir_fname(args, conformal_method.value)
             cp = ScoreMultiSplitConformalClassifier(config=args, datamodule=datamodule)
 
@@ -180,7 +180,7 @@ def run_conformal_fairness(
     base_ckpt_dir: Optional[str] = None,
 ):
     # Load probs/labels from base for all (not necessarily labeled) points
-    probs, labels = load_basegnn_outputs(args, base_ckpt_dir)
+    probs, labels = load_base_model_outputs(args, base_ckpt_dir)
     assert (
         probs.shape[1] == datamodule.num_classes
     ), f"Loaded probs has {probs.shape[1]} classes, but the dataset has {datamodule.num_classes} classes"

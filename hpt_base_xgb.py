@@ -33,7 +33,7 @@ def train_func(config, base_config: BaseExptConfig, num_trials):
         model = utils.train_basexgb(model, datamodule)  # fit the model
         _, valid_acc = utils.basexgb_valid_outputs(model, datamodule)
         sum_acc += valid_acc.item()
-    # results = utils.run_basexgb_inference_alldl(model, datamodule)  # get results
+    # results = utils.run_xgb_inference_alldl(model, datamodule)  # get results
     base_config.seed = base_seed
     base_config.dataset.force_reprep = force_reprep
     train.report({"accuracy": sum_acc / num_trials})
@@ -52,7 +52,7 @@ def train_func_list(config, base_config: BaseExptConfig, num_trials, datamodule_
         model = utils.train_basexgb(model, datamodule)  # fit the model
         _, valid_acc = utils.basexgb_valid_outputs(model, datamodule)
         sum_acc += valid_acc.item()
-    # results = utils.run_basexgb_inference_alldl(model, datamodule)  # get results
+    # results = utils.run_xgb_inference_alldl(model, datamodule)  # get results
     base_config.seed = base_seed
     train.report({"accuracy": sum_acc / num_trials})
 
@@ -75,7 +75,7 @@ def main():
             shutil.rmtree(ckpt_dir)
     else:
         logger.warning("Resuming from checkpoint")
-        args = utils.load_basegnn_config_from_ckpt(ckpt_dir, args)
+        args = utils.load_base_config_from_ckpt(ckpt_dir, args)
 
     utils.prepare_datamodule(args)
 
@@ -120,7 +120,7 @@ def main():
         datamodule = utils.prepare_datamodule(args)
         datamodule_list.append(datamodule)
         args.dataset.force_reprep = False
-    # results = utils.run_basexgb_inference_alldl(model, datamodule)  # get results
+    # results = utils.run_xgb_inference_alldl(model, datamodule)  # get results
     args.seed = base_seed
     args.dataset.force_reprep = force_reprep
     utils.set_seed_and_precision(base_seed)
@@ -151,7 +151,7 @@ def main():
     best_result = res.get_best_result()
     best_config = args
     update_params(best_config, best_result.metrics["config"])
-    utils.output_basegnn_config(ckpt_dir, best_config)
+    utils.output_base_model_config(ckpt_dir, best_config)
 
 
 if __name__ == "__main__":
